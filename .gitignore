@@ -1,0 +1,37 @@
+# .NET
+bin/
+obj/
+*.user
+artifacts/
+
+# Node / Vite
+node_modules/
+dist/
+.vite/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+deploy/.env
+*.pem
+*.key
+
+# Signing keys (jangan pernah commit private key)
+signing/
+*.pfx
+
+# IDE / OS
+.vs/
+.vscode/
+.idea/
+.DS_Store
+
+# Logs & local data
+*.log
+
+# Agent tool compat dirs
+.claude/
+.cursor/
+.windsurf/
+*.tsbuildinfo

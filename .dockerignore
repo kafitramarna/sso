@@ -1,0 +1,21 @@
+# Keep .NET build context small — api Dockerfile builds from repo root.
+**/bin
+**/obj
+**/node_modules
+**/dist
+**/.venv
+**/__pycache__
+.git
+docs
+design
+samples
+spikes
+plans
+tests
+signing
+deploy/signing
+*.pem
+*.key
+.env
+.env.*
+deploy/.env

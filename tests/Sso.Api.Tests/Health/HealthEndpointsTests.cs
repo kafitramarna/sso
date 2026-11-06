@@ -7,11 +7,11 @@ using Microsoft.AspNetCore.Mvc.Testing;
 namespace Sso.Api.Tests.Health;
 
 /// <summary>FR-E01: /health/live = process up; /health/ready = dependency report (PRD §10).</summary>
-public class HealthEndpointsTests : IClassFixture<WebApplicationFactory<Program>>
+public class HealthEndpointsTests : IClassFixture<SsoApiFactory>
 {
     private readonly HttpClient _client;
 
-    public HealthEndpointsTests(WebApplicationFactory<Program> factory)
+    public HealthEndpointsTests(SsoApiFactory factory)
         => _client = factory.CreateClient();
 
     [Fact]

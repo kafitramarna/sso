@@ -1,7 +1,12 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Sso.Api.Endpoints;
 using Sso.Api.Http;
+using Sso.Infrastructure.Auth;
 using Sso.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -20,6 +25,26 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 });
 
 builder.Services.AddSsoPersistence(builder.Configuration);
+builder.Services.AddSsoServices(builder.Configuration);
+
+// Session JWT validation — RS256 public key from the token service (KD-02/03).
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer();
+builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
+    .Configure<Rs256JwtTokenService>((options, jwt) =>
+    {
+        options.MapInboundClaims = false; // keep "sub", "roles", "fam" names
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidIssuer = jwt.Issuer,
+            ValidAudience = Rs256JwtTokenService.SessionAudience,
+            IssuerSigningKey = jwt.PublicKey,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromSeconds(30),
+            RoleClaimType = "roles",
+        };
+    });
+builder.Services.AddAuthorization();
 
 // Rate limiting (FR-E04). "auth" applies to credential endpoints (Fase 1+);
 // defined up-front so limiter behaviour is one place, like plotsure WS-6.
@@ -66,6 +91,8 @@ var app = builder.Build();
 app.UseMiddleware<ErrorHandlingMiddleware>();
 app.UseCors();
 app.UseRateLimiter();
+app.UseAuthentication();
+app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
 {
@@ -97,6 +124,12 @@ app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.Health
 });
 
 app.MapGet("/", () => Results.Ok(new { service = "sso-api", version = "0.1.0" }));
+
+app.MapAuthEndpoints();
+app.MapMeEndpoints();
+app.MapAdminEndpoints();
+
+// Migrate + seed run in SsoBootstrapHostedService (real provider, FR-E02/KD-11).
 
 app.Run();
 

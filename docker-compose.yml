@@ -47,10 +47,10 @@ services:
       App__WebBaseUrl: https://${DOMAIN}
       AllowSelfRegistration: "false"
       Signing__KeyPath: ${SIGNING_KEY_PATH:-/run/secrets/signing_key}
-      Seed__Admin__Email: ${SEED_ADMIN_EMAIL}
-      Seed__Admin__Password: ${SEED_ADMIN_PASSWORD}
-      Seed__AgentOffice__ClientSecret: ${SEED_AGENTOFFICE_CLIENT_SECRET}
-      Seed__AgentOffice__RedirectUri: https://${OFFICE_DOMAIN}/auth/callback
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
+      SEED_AGENTOFFICE_CLIENT_SECRET: ${SEED_AGENTOFFICE_CLIENT_SECRET}
+      SEED_AGENTOFFICE_REDIRECT_URIS: https://${OFFICE_DOMAIN}/auth/callback
       Email__Provider: ${EMAIL_PROVIDER:-smtp}
       Email__From: ${EMAIL_FROM:-SSO <no-reply@example.com>}
       Email__Smtp__Host: ${SMTP_HOST:-}

@@ -41,6 +41,7 @@
 
 - **Tidak ada** trailer `Generated with ...`, `Co-Authored-By:`, atau atribusi tool/agent apa pun.
 - **Tidak ada** secret, signing key, `.env`, atau data environment-specific di pesan maupun isi commit.
+- Tidak ada `;` (semicolon) di pesan commit — pecah jadi kalimat/bullet terpisah.
 - Tidak ada emoji di pesan commit.
 
 ## Contoh

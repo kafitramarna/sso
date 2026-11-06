@@ -27,12 +27,12 @@
 
 - Format: `<prefix>: <summary>` — prefix lowercase, diikuti `: ` (colon + spasi).
 - Summary: **English**, imperative mood (`add`, `fix`, `move` — bukan `added`/`adds`), lowercase awal kata, **tanpa titik di akhir**, maks **72 karakter**.
-- Scope opsional: `<prefix>(scope): <summary>` — scope lowercase singkat, contoh `feat(oauth): add token endpoint`.
+- **Tanpa scope** — jangan tulis `feat(oauth): ...` atau `fix(api): ...`; selalu plain `<prefix>: <summary>`.
 
 ## Body (opsional, wajib untuk perubahan non-trivial)
 
 - Satu baris kosong setelah head.
-- Wrap di ±72 karakter; bullet point pakai `-`.
+- Wrap di ±72 karakter; bullet point **wajib** pakai `-` (bukan paragraf panjang untuk daftar perubahan).
 - Jelaskan **mengapa** dan **apa** di level tinggi — bukan daftar per-baris kode (itu sudah terlihat di diff).
 - Referensikan nomor keputusan saat mengimplementasikan decision log: `(KD-02)`.
 - Sertakan breaking change atau langkah migrasi jika ada.

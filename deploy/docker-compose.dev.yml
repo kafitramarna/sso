@@ -1,0 +1,50 @@
+name: sso-dev
+
+# Dev data plane only — API runs via `dotnet run` (:5140), Web via `yarn dev`
+# (:5175). Ports follow the +1 convention from plotsure-dev (5433→5434 etc.,
+# KD-12) so multiple dev stacks coexist on this machine.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sso-postgres
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_DB: sso
+      POSTGRES_USER: sso
+      POSTGRES_PASSWORD: dev_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sso -d sso"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: sso-redis
+    ports:
+      - "6381:6379"
+    # AOF so refresh tokens survive container restarts (KD-03).
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Local SMTP sink — API points Email:Smtp at localhost:1027;
+  # web UI at http://localhost:8027 shows every delivered message.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: sso-mailpit
+    ports:
+      - "1027:1025"
+      - "8027:8025"
+
+volumes:
+  postgres-data:
+  redis-data:

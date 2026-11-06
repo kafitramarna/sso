@@ -1,0 +1,138 @@
+name: sso
+
+# Production single-VPS stack (docs/01-PRD §11). Dev stays on
+# deploy/docker-compose.dev.yml — do NOT reuse this file locally.
+#
+# Usage (VPS, /opt/apps/sso/):
+#   docker compose up -d          # .env auto-loads from project dir
+#
+# Reverse proxy: Nginx Proxy Manager occupies 80/443 and lives in
+# `app-network`. web+api join that network so NPM can route
+# sso.<domain> → web (SPA) and /v1,/oauth,/.well-known,/admin,/health → api:8080.
+#
+# Required env in .env (project root, 600): POSTGRES_PASSWORD, REDIS_PASSWORD,
+# SIGNING_KEY_PATH, DOMAIN, SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD,
+# SEED_AGENTOFFICE_CLIENT_SECRET, SMTP_PASS. See deploy/.env.example.
+#
+# Port exposure: nothing public — NPM terminates TLS and proxies internally.
+# Data plane binds 127.0.0.1 as second layer vs OCI Security List + ufw.
+
+services:
+  web:
+    build:
+      context: ./src/Sso.Web
+    container_name: sso-web
+    restart: unless-stopped
+    networks:
+      - app-network
+      - sso-net
+
+  api:
+    build:
+      context: .
+      dockerfile: src/Sso.Api/Dockerfile
+    container_name: sso-api
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5140:8080"     # local probes only; NPM reaches via app-network
+    networks:
+      - app-network
+      - sso-net
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      SSO_DB: Host=sso-postgres;Port=5432;Database=sso;Username=sso;Password=${POSTGRES_PASSWORD}
+      SSO_REDIS: sso-redis:6379,password=${REDIS_PASSWORD}
+      Auth__Issuer: https://${DOMAIN}
+      Cors__Origins: https://${DOMAIN},https://${OFFICE_DOMAIN}
+      App__WebBaseUrl: https://${DOMAIN}
+      AllowSelfRegistration: "false"
+      Signing__KeyPath: ${SIGNING_KEY_PATH:-/run/secrets/signing_key}
+      Seed__Admin__Email: ${SEED_ADMIN_EMAIL}
+      Seed__Admin__Password: ${SEED_ADMIN_PASSWORD}
+      Seed__AgentOffice__ClientSecret: ${SEED_AGENTOFFICE_CLIENT_SECRET}
+      Seed__AgentOffice__RedirectUri: https://${OFFICE_DOMAIN}/auth/callback
+      Email__Provider: ${EMAIL_PROVIDER:-smtp}
+      Email__From: ${EMAIL_FROM:-SSO <no-reply@example.com>}
+      Email__Smtp__Host: ${SMTP_HOST:-}
+      Email__Smtp__Port: ${SMTP_PORT:-587}
+      Email__Smtp__UseStartTls: ${SMTP_STARTTLS:-true}
+      Email__Smtp__Username: ${SMTP_USER:-}
+      Email__Smtp__Password: ${SMTP_PASS:-}
+    secrets:
+      - signing_key
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health/live || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ── Data plane — nothing below here is reachable off-host ──────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: sso-postgres
+    restart: unless-stopped
+    networks:
+      sso-net:
+        aliases: [sso-postgres]
+    ports:
+      - "127.0.0.1:5434:5432"
+    environment:
+      POSTGRES_DB: sso
+      POSTGRES_USER: sso
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./backups:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sso -d sso"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: sso-redis
+    restart: unless-stopped
+    networks:
+      sso-net:
+        aliases: [sso-redis]
+    # AOF+everysec = refresh tokens survive restart (KD-03).
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --appendonly yes
+      --appendfsync everysec
+      --save 900 1
+      --maxmemory ${REDIS_MAXMEMORY:-256mb}
+      --maxmemory-policy volatile-lru
+    ports:
+      - "127.0.0.1:6381:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a $$REDIS_PASSWORD ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+networks:
+  app-network:
+    external: true          # NPM lives here — web+api must join for proxying
+  sso-net:
+    driver: bridge          # internal data plane (KD-05)
+
+secrets:
+  signing_key:
+    file: ./deploy/signing/sso-rsa.pem   # RSA-2048 khusus SSO (KD-02), gitignored
+
+volumes:
+  postgres-data:
+  redis-data:

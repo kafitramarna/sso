@@ -1,0 +1,76 @@
+# CI/CD: GitHub Actions → VPS Oracle (Jalur A: build native ARM64 di VPS)
+# Adapted from oracle/ci-cd/deploy.yml — see that README for secrets setup.
+#
+# Server-side layout:
+#   /opt/apps/sso/            rsync target (this repo)
+#   /opt/apps/sso/.env        prod secrets (rsync excludes .env)
+#   /usr/local/bin/deploy-app builds + ups the compose project
+#
+# First deploy: create /opt/apps/sso/.env AND /opt/apps/sso/deploy/signing/sso-rsa.pem
+# on the VPS before the first green run (KD-02; rsync excludes both so they
+# survive every deploy).
+
+name: build-test-deploy
+
+on:
+  push:
+    branches: [master-dev]   # auto-deploy ke sso.<dev-domain>; master = prod nanti
+  workflow_dispatch: {}
+
+env:
+  VPS_HOST: ${{ secrets.VPS_HOST || '129.225.0.136' }}
+  VPS_USER: ubuntu
+  APP_NAME: sso
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: dotnet test (unit — infra-free tests only)
+        run: dotnet test Sso.sln --filter "Category!=Integration" -v q
+
+      - name: web build check
+        working-directory: src/Sso.Web
+        run: yarn install --frozen-lockfile && yarn build
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    concurrency: deploy-production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Siapkan kunci SSH
+        env:
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -t ed25519 "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Kirim sumber ke VPS (rsync)
+        run: |
+          rsync -az --delete \
+            --exclude '.git' --exclude 'node_modules' --exclude '__pycache__' \
+            --exclude '.env' --exclude '*.pem' --exclude '*.key' \
+            --exclude 'deploy/signing/' --exclude 'deploy/.env' \
+            --exclude 'bin/' --exclude 'obj/' --exclude 'dist/' \
+            --exclude 'spikes/' \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes" \
+            ./ "$VPS_USER@$VPS_HOST:/opt/apps/$APP_NAME/"
+
+      - name: Build & jalankan di VPS
+        run: |
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes \
+            "$VPS_USER@$VPS_HOST" "deploy-app $APP_NAME"

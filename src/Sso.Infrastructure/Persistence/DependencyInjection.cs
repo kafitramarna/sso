@@ -4,10 +4,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Sso.Application.Abstractions;
 using Sso.Application.Auth;
+using Sso.Application.Oidc;
 using Sso.Domain.Entities;
 using Sso.Infrastructure.Audit;
 using Sso.Infrastructure.Auth;
 using Sso.Infrastructure.Notifications;
+using Sso.Infrastructure.Oidc;
 using StackExchange.Redis;
 
 namespace Sso.Infrastructure.Persistence;
@@ -64,6 +66,26 @@ public static class DependencyInjection
             sp.GetService<IConnectionMultiplexer>() is { } mux
                 ? new RedisRefreshTokenStore(mux)
                 : new InMemoryRefreshTokenStore());
+
+        // OIDC provider stores — dedicated `oidc:` keyspace so OIDC grants can
+        // never be exchanged for SSO session tokens (KD-01).
+        services.AddSingleton<IAuthorizationCodeStore>(sp =>
+            sp.GetService<IConnectionMultiplexer>() is { } mux
+                ? (IAuthorizationCodeStore)new RedisAuthorizationCodeStore(mux)
+                : new InMemoryAuthorizationCodeStore());
+        services.AddSingleton<IOidcRefreshStore>(sp =>
+            sp.GetService<IConnectionMultiplexer>() is { } mux
+                ? (IOidcRefreshStore)new RedisOidcRefreshStore(mux)
+                : new InMemoryOidcRefreshStore());
+        services.AddSingleton(new OidcOptions
+        {
+            Issuer = configuration["Auth:Issuer"] ?? "sso",
+            WebBaseUrl = configuration["App:WebBaseUrl"] ?? "http://localhost:5175",
+            CodeTtl = TimeSpan.FromSeconds(configuration.GetValue("Oidc:CodeTtlSeconds", 90)),
+            RefreshTokenTtl = TimeSpan.FromDays(configuration.GetValue("Oidc:RefreshTokenDays", 30)),
+        });
+        services.AddScoped<OidcService>();
+        services.AddScoped<ClientsService>();
 
         services.AddScoped<INotifier>(sp =>
             !string.IsNullOrWhiteSpace(configuration["Email:Smtp:Host"])

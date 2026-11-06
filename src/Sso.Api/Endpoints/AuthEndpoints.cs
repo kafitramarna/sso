@@ -10,6 +10,13 @@ public static class AuthEndpoints
 {
     private const string RefreshCookie = "sso_rt";
 
+    /// <summary>
+    /// `sso_sess` carries the session family id with Path=/ and SameSite=Lax so
+    /// /oauth/authorize can detect a live SSO session during cross-site
+    /// top-level navigations — `sso_rt` stays Strict + /v1/auth-scoped (KD-03).
+    /// </summary>
+    private const string SessionCookie = "sso_sess";
+
     public static RouteGroupBuilder MapAuthEndpoints(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/v1/auth");
@@ -30,7 +37,7 @@ public static class AuthEndpoints
                 LoginRequest request, HttpContext http, AuthService auth, CancellationToken ct) =>
             {
                 var result = await auth.LoginAsync(request, http.Connection.RemoteIpAddress, Ua(http), ct);
-                SetRefreshCookie(http, result.RefreshToken);
+                SetSessionCookies(http, result);
                 return ApiEnvelope.Ok(Body(result));
             })
             .AllowAnonymous()
@@ -42,7 +49,7 @@ public static class AuthEndpoints
                 var cookie = http.Request.Cookies[RefreshCookie]
                     ?? throw ApiError.Unauthenticated("No refresh token.");
                 var result = await auth.RefreshAsync(cookie, http.Connection.RemoteIpAddress, Ua(http), ct);
-                SetRefreshCookie(http, result.RefreshToken);
+                SetSessionCookies(http, result);
                 return ApiEnvelope.Ok(Body(result));
             })
             .AllowAnonymous()
@@ -53,7 +60,7 @@ public static class AuthEndpoints
             {
                 if (http.Request.Cookies[RefreshCookie] is { } cookie)
                     await auth.LogoutAsync(cookie, http.Connection.RemoteIpAddress, Ua(http), ct);
-                DeleteRefreshCookie(http);
+                DeleteSessionCookies(http);
                 return Results.NoContent();
             })
             .AllowAnonymous()
@@ -63,7 +70,7 @@ public static class AuthEndpoints
                 VerifyEmailRequest request, HttpContext http, AuthService auth, CancellationToken ct) =>
             {
                 var result = await auth.VerifyEmailAsync(request, http.Connection.RemoteIpAddress, Ua(http), ct);
-                SetRefreshCookie(http, result.RefreshToken);
+                SetSessionCookies(http, result);
                 return ApiEnvelope.Ok(Body(result));
             })
             .AllowAnonymous()
@@ -85,7 +92,7 @@ public static class AuthEndpoints
                 ResetPasswordRequest request, HttpContext http, AuthService auth, CancellationToken ct) =>
             {
                 await auth.ResetPasswordAsync(request, http.Connection.RemoteIpAddress, Ua(http), ct);
-                DeleteRefreshCookie(http); // all sessions were revoked anyway
+                DeleteSessionCookies(http); // all sessions were revoked anyway
                 return ApiEnvelope.Ok(new { message = "Password updated." });
             })
             .AllowAnonymous()
@@ -95,7 +102,7 @@ public static class AuthEndpoints
                 AcceptInviteRequest request, HttpContext http, AuthService auth, CancellationToken ct) =>
             {
                 var result = await auth.AcceptInviteAsync(request, http.Connection.RemoteIpAddress, Ua(http), ct);
-                SetRefreshCookie(http, result.RefreshToken);
+                SetSessionCookies(http, result);
                 return ApiEnvelope.Ok(Body(result));
             })
             .AllowAnonymous()
@@ -115,20 +122,32 @@ public static class AuthEndpoints
     private static string? Ua(HttpContext http)
         => http.Request.Headers.UserAgent.FirstOrDefault();
 
-    private static void SetRefreshCookie(HttpContext http, string refreshToken)
+    private static void SetSessionCookies(HttpContext http, AuthResult result)
     {
         var secure = http.RequestServices.GetRequiredService<IConfiguration>()
             .GetValue("Auth:CookieSecure", true);
-        http.Response.Cookies.Append(RefreshCookie, refreshToken, new CookieOptions
+        var expires = DateTimeOffset.UtcNow.AddDays(7);
+        http.Response.Cookies.Append(RefreshCookie, result.RefreshToken, new CookieOptions
         {
             HttpOnly = true,
             Secure = secure,
             SameSite = SameSiteMode.Strict,
             Path = "/v1/auth",
-            Expires = DateTimeOffset.UtcNow.AddDays(7),
+            Expires = expires,
+        });
+        http.Response.Cookies.Append(SessionCookie, result.FamilyId.ToString(), new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = secure,
+            SameSite = SameSiteMode.Lax,
+            Path = "/",
+            Expires = expires,
         });
     }
 
-    private static void DeleteRefreshCookie(HttpContext http)
-        => http.Response.Cookies.Delete(RefreshCookie, new CookieOptions { Path = "/v1/auth" });
+    private static void DeleteSessionCookies(HttpContext http)
+    {
+        http.Response.Cookies.Delete(RefreshCookie, new CookieOptions { Path = "/v1/auth" });
+        http.Response.Cookies.Delete(SessionCookie, new CookieOptions { Path = "/" });
+    }
 }

@@ -63,7 +63,9 @@ public static class SsoSeeder
                     Type = ClientType.Confidential,
                     SecretHash = HashSecret(secret),
                     RedirectUris = [.. redirectUris],
-                    AllowedScopes = ["openid", "profile", "email"],
+                    // offline_access → agent-office gets rotating refresh
+                    // tokens for silent renew (KD-01/KD-08).
+                    AllowedScopes = ["openid", "profile", "email", "offline_access"],
                     SkipConsent = true,
                     Active = true,
                     CreatedAt = DateTimeOffset.UtcNow,

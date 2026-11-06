@@ -26,6 +26,8 @@ public class SsoApiFactory : WebApplicationFactory<Program>
                 ["Admin:ApiKey"] = "test-admin-key",
                 ["SEED_ADMIN_EMAIL"] = "admin@test.local",
                 ["SEED_ADMIN_PASSWORD"] = "admin-test-password",
+                ["SEED_AGENTOFFICE_CLIENT_SECRET"] = "test-agent-secret",
+                ["SEED_AGENTOFFICE_REDIRECT_URIS"] = "https://office.test/callback",
                 ["Auth:Issuer"] = "sso-test",
                 ["Auth:CookieSecure"] = "false",
                 ["AllowSelfRegistration"] = "false",

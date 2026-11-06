@@ -12,4 +12,10 @@ public interface ITokenService
 {
     /// <param name="sessionFamily">Refresh family this token belongs to — emitted as `fam` claim so /v1/sessions can mark "current".</param>
     AccessTokenResult CreateSessionToken(User user, Guid? sessionFamily = null);
+
+    /// <summary>OIDC access token for a registered client — aud = client_id (FR-B03/B07).</summary>
+    AccessTokenResult CreateOidcAccessToken(User user, string clientId, string scope);
+
+    /// <summary>OIDC id_token — aud = client_id, carries nonce when the client sent one (KD-01).</summary>
+    AccessTokenResult CreateIdToken(User user, string clientId, string? nonce);
 }

@@ -2,6 +2,7 @@ using Sso.Api.Auth;
 using Sso.Api.Http;
 using Sso.Application.Auth;
 using Sso.Application.Errors;
+using Sso.Application.Oidc;
 
 namespace Sso.Api.Endpoints;
 
@@ -40,6 +41,57 @@ public static class AdminEndpoints
                     userId, true, http.User.UserId() ?? Guid.Empty,
                     http.Connection.RemoteIpAddress, Ua(http), ct);
                 return Results.NoContent();
+            });
+
+        // --- client registry (FR-C) — plaintext secret appears exactly once ---
+
+        group.MapGet("/clients", async (
+                HttpContext http, ClientsService clients, IConfiguration config,
+                CancellationToken ct) =>
+            {
+                RequireAdmin(http, config);
+                return ApiEnvelope.Ok(new { clients = await clients.ListAsync(ct) });
+            });
+
+        group.MapPost("/clients", async (
+                CreateClientRequest request, HttpContext http, ClientsService clients,
+                IConfiguration config, CancellationToken ct) =>
+            {
+                RequireAdmin(http, config);
+                var result = await clients.CreateAsync(
+                    request, http.User.UserId() ?? Guid.Empty,
+                    http.Connection.RemoteIpAddress, Ua(http), ct);
+                return ApiEnvelope.Ok(new
+                {
+                    client = result.Client,
+                    client_secret = result.PlainSecret, // shown once — never again (FR-C02)
+                }, StatusCodes.Status201Created);
+            });
+
+        group.MapPatch("/clients/{clientId:guid}", async (
+                Guid clientId, UpdateClientRequest request, HttpContext http,
+                ClientsService clients, IConfiguration config, CancellationToken ct) =>
+            {
+                RequireAdmin(http, config);
+                var dto = await clients.UpdateAsync(
+                    clientId, request, http.User.UserId() ?? Guid.Empty,
+                    http.Connection.RemoteIpAddress, Ua(http), ct);
+                return ApiEnvelope.Ok(new { client = dto });
+            });
+
+        group.MapPost("/clients/{clientId:guid}/rotate-secret", async (
+                Guid clientId, HttpContext http, ClientsService clients,
+                IConfiguration config, CancellationToken ct) =>
+            {
+                RequireAdmin(http, config);
+                var result = await clients.RotateSecretAsync(
+                    clientId, http.User.UserId() ?? Guid.Empty,
+                    http.Connection.RemoteIpAddress, Ua(http), ct);
+                return ApiEnvelope.Ok(new
+                {
+                    client = result.Client,
+                    client_secret = result.PlainSecret,
+                });
             });
 
         group.MapPost("/users/{userId:guid}/enable", async (

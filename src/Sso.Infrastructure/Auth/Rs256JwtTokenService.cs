@@ -58,6 +58,9 @@ public sealed class Rs256JwtTokenService : ITokenService
     /// <summary>Public key for token validation + JWKS endpoint (Fase 2).</summary>
     public RsaSecurityKey PublicKey => new(_rsa) { KeyId = KeyId };
 
+    /// <summary>RSA public parameters for JWKS n/e encoding (FR-B05).</summary>
+    public RSAParameters PublicKeyParameters => _rsa.ExportParameters(false);
+
     private SigningCredentials Credentials => new(PublicKey, SecurityAlgorithms.RsaSha256);
 
     public string Issuer => _issuer;
@@ -90,6 +93,59 @@ public sealed class Rs256JwtTokenService : ITokenService
             SigningCredentials = Credentials,
         };
 
+        var handler = new JwtSecurityTokenHandler();
+        return new AccessTokenResult(
+            handler.WriteToken(handler.CreateToken(descriptor)),
+            (int)_ttl.TotalSeconds, expires);
+    }
+
+    /// <summary>OIDC access token — aud = client_id, scope claim drives userinfo filtering (FR-B03/B07).</summary>
+    public AccessTokenResult CreateOidcAccessToken(User user, string clientId, string scope)
+    {
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new("scope", scope),
+            new("client_id", clientId),
+            new("auth_kind", "oidc"),
+        };
+        if (user.DisplayName is not null)
+            claims.Add(new Claim("name", user.DisplayName));
+        claims.Add(new Claim(JwtRegisteredClaimNames.Email, user.Email));
+        claims.Add(new Claim("email_verified", user.EmailVerified ? "true" : "false", ClaimValueTypes.Boolean));
+
+        return WriteToken(claims, clientId);
+    }
+
+    /// <summary>OIDC id_token — minimal identity claims + nonce echo (KD-01).</summary>
+    public AccessTokenResult CreateIdToken(User user, string clientId, string? nonce)
+    {
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            new(JwtRegisteredClaimNames.Email, user.Email),
+            new("email_verified", user.EmailVerified ? "true" : "false", ClaimValueTypes.Boolean),
+        };
+        if (user.DisplayName is not null)
+            claims.Add(new Claim("name", user.DisplayName));
+        if (nonce is not null)
+            claims.Add(new Claim("nonce", nonce));
+
+        return WriteToken(claims, clientId);
+    }
+
+    private AccessTokenResult WriteToken(IEnumerable<Claim> claims, string audience)
+    {
+        var expires = DateTime.UtcNow + _ttl;
+        var descriptor = new SecurityTokenDescriptor
+        {
+            Subject = new ClaimsIdentity(claims),
+            Expires = expires,
+            Issuer = _issuer,
+            Audience = audience,
+            SigningCredentials = Credentials,
+        };
         var handler = new JwtSecurityTokenHandler();
         return new AccessTokenResult(
             handler.WriteToken(handler.CreateToken(descriptor)),

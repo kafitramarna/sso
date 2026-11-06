@@ -50,6 +50,13 @@ public interface IRefreshTokenStore
     /// <summary>Read payload without consuming (logout path).</summary>
     Task<RefreshPayload?> ResolveAsync(string token, CancellationToken ct = default);
 
+    /// <summary>
+    /// Read by family id — backs the `sso_sess` browser cookie used by
+    /// /oauth/authorize: proves "a live session exists" without rotating the
+    /// refresh token on a plain GET.
+    /// </summary>
+    Task<RefreshPayload?> ResolveFamilyAsync(Guid familyId, CancellationToken ct = default);
+
     Task RevokeFamilyAsync(Guid familyId, CancellationToken ct = default);
 
     /// <summary>Revoke every family of the user, optionally keeping one (password change keeps current session, FR-A05).</summary>

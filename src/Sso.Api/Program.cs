@@ -29,7 +29,8 @@ builder.Services.AddSsoServices(builder.Configuration);
 
 // Session JWT validation — RS256 public key from the token service (KD-02/03).
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer();
+    .AddJwtBearer()
+    .AddJwtBearer("oidc"); // OIDC access tokens — aud varies per client (FR-B04)
 builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme)
     .Configure<Rs256JwtTokenService>((options, jwt) =>
     {
@@ -44,7 +45,23 @@ builder.Services.AddOptions<JwtBearerOptions>(JwtBearerDefaults.AuthenticationSc
             RoleClaimType = "roles",
         };
     });
-builder.Services.AddAuthorization();
+builder.Services.AddOptions<JwtBearerOptions>("oidc")
+    .Configure<Rs256JwtTokenService>((options, jwt) =>
+    {
+        options.MapInboundClaims = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidIssuer = jwt.Issuer,
+            ValidateAudience = false, // aud = client_id — any client we issued for is valid
+            IssuerSigningKey = jwt.PublicKey,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromSeconds(30),
+        };
+    });
+builder.Services.AddAuthorizationBuilder()
+    .AddPolicy("oidc", policy => policy
+        .AddAuthenticationSchemes("oidc")
+        .RequireAuthenticatedUser());
 
 // Rate limiting (FR-E04). "auth" applies to credential endpoints (Fase 1+);
 // defined up-front so limiter behaviour is one place, like plotsure WS-6.
@@ -128,6 +145,8 @@ app.MapGet("/", () => Results.Ok(new { service = "sso-api", version = "0.1.0" })
 app.MapAuthEndpoints();
 app.MapMeEndpoints();
 app.MapAdminEndpoints();
+app.MapOidcEndpoints();
+app.MapWellKnownEndpoints();
 
 // Migrate + seed run in SsoBootstrapHostedService (real provider, FR-E02/KD-11).
 

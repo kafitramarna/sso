@@ -18,6 +18,12 @@ public sealed class FakeTokenService : ITokenService
 {
     public AccessTokenResult CreateSessionToken(User user, Guid? sessionFamily = null)
         => new($"access-{user.Id}", 900, DateTimeOffset.UtcNow.AddMinutes(15));
+
+    public AccessTokenResult CreateOidcAccessToken(User user, string clientId, string scope)
+        => new($"oidc-access-{clientId}-{user.Id}", 900, DateTimeOffset.UtcNow.AddMinutes(15));
+
+    public AccessTokenResult CreateIdToken(User user, string clientId, string? nonce)
+        => new($"id-token-{clientId}-{user.Id}", 900, DateTimeOffset.UtcNow.AddMinutes(15));
 }
 
 /// <summary>In-memory mirror of the Redis family-rotation contract (KD-03).</summary>
@@ -68,6 +74,13 @@ public sealed class FakeRefreshTokenStore : IRefreshTokenStore
         => Task.FromResult(_tokens.TryGetValue(token, out var e)
             ? new RefreshPayload(e.UserId, e.FamilyId, e.Meta)
             : null);
+
+    public Task<RefreshPayload?> ResolveFamilyAsync(Guid familyId, CancellationToken ct = default)
+        => Task.FromResult(_tokens.Values
+            .Where(e => e.FamilyId == familyId)
+            .OrderByDescending(e => e.LastSeenAt)
+            .Select(e => new RefreshPayload(e.UserId, e.FamilyId, e.Meta))
+            .FirstOrDefault());
 
     public Task RevokeFamilyAsync(Guid familyId, CancellationToken ct = default)
     {

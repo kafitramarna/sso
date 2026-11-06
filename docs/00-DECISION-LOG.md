@@ -78,6 +78,13 @@ Dokumen lain WAJIB selaras dengan decision log ini. Jika ada dokumen/kode yang b
 - Container: `sso-api`, `sso-web`, `sso-postgres`, `sso-redis`; network `sso-net` + `app-network` (external, NPM); alias `sso-*` di data plane agar tidak tabrakan di `app-network`.
 - Env koneksi: `SSO_DB`, `SSO_REDIS` (pola `PLOTSURE_*`).
 
+## KD-13 — Cookie `sso_sess` (family id) untuk deteksi sesi di /oauth/authorize
+
+- `sso_sess` = session family id, `HttpOnly;Secure;SameSite=Lax;Path=/`, TTL mengikuti refresh TTL; dibuat/dihapus bersama `sso_rt` di login/refresh/verify/accept-invite/logout/reset.
+- Alasan: `/oauth/authorize` dipanggil via navigasi GET lintas-origin — `sso_rt` (`Strict` + `Path=/v1/auth`, KD-03) tidak terkirim. `Lax` lolos navigasi top-level GET, `Strict` tetap tidak akan dikirim dari origin lain.
+- `sso_sess` hanya membuktikan "sesi hidup" (lookup `sso:fam:{id}`); ia **tidak pernah** men-rotate atau menggantikan `sso_rt`. GUID family 128-bit = unguessable, sepadan dengan session id klasik.
+- Ditambahkan saat implementasi Fase 2 (OIDC provider); melengkapi KD-03 tanpa mengubah kontrak `sso_rt`.
+
 ## Masih terbuka (menunggu owner)
 
 - **OQ-1 Domain** — `sso.<domain>` dan `office.<domain>` pakai root domain apa? (menentukan `DOMAIN`, CORS, `redirect_uri`, cookie scope, `iss` claim)

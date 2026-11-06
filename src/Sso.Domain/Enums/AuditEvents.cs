@@ -19,4 +19,13 @@ public static class AuditEvents
     public const string SessionsRevokedAll = "session.revoked_all";
     public const string UserDisabled = "user.disabled";
     public const string UserEnabled = "user.enabled";
+
+    public const string OidcAuthorize = "oidc.authorize";
+    public const string OidcToken = "oidc.token";
+    public const string OidcTokenFailed = "oidc.token_failed";
+    public const string OidcRefreshReuse = "oidc.refresh_reuse_detected";
+    public const string OidcRevoke = "oidc.revoke";
+    public const string ClientCreated = "client.created";
+    public const string ClientUpdated = "client.updated";
+    public const string ClientSecretRotated = "client.secret_rotated";
 }

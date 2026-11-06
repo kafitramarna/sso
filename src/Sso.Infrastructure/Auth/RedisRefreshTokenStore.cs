@@ -90,6 +90,13 @@ public sealed class RedisRefreshTokenStore(IConnectionMultiplexer redis) : IRefr
             ? null : ToPayload(e);
     }
 
+    public async Task<RefreshPayload?> ResolveFamilyAsync(Guid familyId, CancellationToken ct = default)
+    {
+        var raw = await Db.StringGetAsync(FamilyKey(familyId));
+        return raw.IsNullOrEmpty || JsonSerializer.Deserialize<Entry>(raw.ToString()) is not { } e
+            ? null : ToPayload(e);
+    }
+
     public async Task RevokeFamilyAsync(Guid familyId, CancellationToken ct = default)
     {
         var raw = await Db.StringGetAsync(FamilyKey(familyId));

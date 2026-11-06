@@ -60,6 +60,17 @@ public sealed class InMemoryRefreshTokenStore : IRefreshTokenStore
             ? new RefreshPayload(e.UserId, e.FamilyId, e.Meta)
             : null);
 
+    public Task<RefreshPayload?> ResolveFamilyAsync(Guid familyId, CancellationToken ct = default)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var entry = _tokens.Values
+            .Where(e => e.FamilyId == familyId && e.ExpiresAt > now)
+            .OrderByDescending(e => e.LastSeenAt)
+            .FirstOrDefault();
+        return Task.FromResult(entry is null
+            ? null : new RefreshPayload(entry.UserId, entry.FamilyId, entry.Meta));
+    }
+
     public Task RevokeFamilyAsync(Guid familyId, CancellationToken ct = default)
     {
         RevokeFamily(familyId);

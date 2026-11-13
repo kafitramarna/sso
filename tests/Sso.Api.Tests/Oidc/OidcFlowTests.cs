@@ -10,13 +10,17 @@ namespace Sso.Api.Tests.Oidc;
 
 /// <summary>
 /// FR-B end-to-end: discovery/JWKS contract + the complete code+PKCE round
-/// trip against the seeded agent-office client (KD-01/KD-08).
+/// trip against a test agent-office client (KD-01/KD-08).
 /// </summary>
 public class OidcFlowTests : IClassFixture<SsoApiFactory>
 {
     private readonly SsoApiFactory _factory;
 
-    public OidcFlowTests(SsoApiFactory factory) => _factory = factory;
+    public OidcFlowTests(SsoApiFactory factory)
+    {
+        _factory = factory;
+        _factory.SeedAgentOfficeClient();
+    }
 
     private HttpClient NewClient() => _factory.CreateClient(new WebApplicationFactoryClientOptions
     {

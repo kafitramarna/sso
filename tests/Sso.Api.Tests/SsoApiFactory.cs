@@ -1,8 +1,11 @@
+using System.Text;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Sso.Domain.Entities;
+using Sso.Domain.Enums;
 using Sso.Infrastructure.Persistence;
 
 namespace Sso.Api.Tests;
@@ -26,8 +29,6 @@ public class SsoApiFactory : WebApplicationFactory<Program>
                 ["Admin:ApiKey"] = "test-admin-key",
                 ["SEED_ADMIN_EMAIL"] = "admin@test.local",
                 ["SEED_ADMIN_PASSWORD"] = "admin-test-password",
-                ["SEED_AGENTOFFICE_CLIENT_SECRET"] = "test-agent-secret",
-                ["SEED_AGENTOFFICE_REDIRECT_URIS"] = "https://office.test/callback",
                 ["Auth:Issuer"] = "sso-test",
                 ["Auth:CookieSecure"] = "false",
                 ["AllowSelfRegistration"] = "false",
@@ -35,5 +36,33 @@ public class SsoApiFactory : WebApplicationFactory<Program>
         builder.ConfigureServices(services =>
             services.AddDbContext<SsoDbContext>(o =>
                 o.UseInMemoryDatabase(_dbName)));
+    }
+
+    /// <summary>
+    /// Test clients are inserted directly — production seeds nothing but the
+    /// first admin (clients come from the admin UI/API).
+    /// </summary>
+    public void SeedAgentOfficeClient()
+    {
+        using var scope = Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<SsoDbContext>();
+        if (db.Clients.Any(c => c.ClientId == "agent-office"))
+            return;
+        db.Clients.Add(new Client
+        {
+            Id = Guid.NewGuid(),
+            ClientId = "agent-office",
+            Name = "Agent Office",
+            Type = ClientType.Confidential,
+            SecretHash = Convert.ToHexStringLower(
+                System.Security.Cryptography.SHA256.HashData(
+                    Encoding.UTF8.GetBytes("test-agent-secret"))),
+            RedirectUris = ["https://office.test/callback"],
+            AllowedScopes = ["openid", "profile", "email", "offline_access"],
+            SkipConsent = true,
+            Active = true,
+            CreatedAt = DateTimeOffset.UtcNow,
+        });
+        db.SaveChanges();
     }
 }

@@ -17,22 +17,22 @@ public sealed class SmtpNotifier(IConfiguration config, ILogger<SmtpNotifier> lo
     public Task NotifyVerifyEmailAsync(string email, string verifyUrl, CancellationToken ct = default)
     {
         var t = EmailTemplates.VerifyEmail(verifyUrl);
-        return SendAsync(email, t.Subject, t.Body, ct);
+        return SendAsync(email, t.Subject, t.Text, t.Html, ct);
     }
 
     public Task NotifyPasswordResetAsync(string email, string resetUrl, CancellationToken ct = default)
     {
         var t = EmailTemplates.PasswordReset(resetUrl);
-        return SendAsync(email, t.Subject, t.Body, ct);
+        return SendAsync(email, t.Subject, t.Text, t.Html, ct);
     }
 
     public Task NotifyInvitedAsync(string email, string inviteUrl, CancellationToken ct = default)
     {
         var t = EmailTemplates.Invited(inviteUrl);
-        return SendAsync(email, t.Subject, t.Body, ct);
+        return SendAsync(email, t.Subject, t.Text, t.Html, ct);
     }
 
-    private async Task SendAsync(string to, string subject, string body, CancellationToken ct)
+    private async Task SendAsync(string to, string subject, string text, string html, CancellationToken ct)
     {
         try
         {
@@ -54,7 +54,7 @@ public sealed class SmtpNotifier(IConfiguration config, ILogger<SmtpNotifier> lo
             message.From.Add(MailboxAddress.Parse(from));
             message.To.Add(MailboxAddress.Parse(to));
             message.Subject = subject;
-            message.Body = new TextPart("plain") { Text = body };
+            message.Body = new BodyBuilder { TextBody = text, HtmlBody = html }.ToMessageBody();
 
             using var smtp = new SmtpClient();
             var port = config.GetValue("Email:Smtp:Port", 25);

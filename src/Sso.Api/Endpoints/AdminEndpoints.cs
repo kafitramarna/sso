@@ -14,7 +14,7 @@ public static class AdminEndpoints
 {
     public static RouteGroupBuilder MapAdminEndpoints(this IEndpointRouteBuilder routes)
     {
-        var group = routes.MapGroup("/admin");
+        var group = routes.MapGroup("/v1/admin");
 
         group.MapPost("/invites", async (
                 CreateInviteRequest request, HttpContext http, AuthService auth,

@@ -126,7 +126,7 @@ function ClientsTab() {
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
-    unwrap(api.get("/admin/clients"))
+    unwrap(api.get("/v1/admin/clients"))
       .then((d) => setClients((d as { clients: ClientDto[] }).clients))
       .catch((err) => setError(err instanceof Error ? err.message : "Could not load clients."));
   }, []);
@@ -146,7 +146,7 @@ function ClientsTab() {
     setBusy(true);
     try {
       const r = await unwrap<{ client: ClientDto; client_secret: string }>(
-        api.post("/admin/clients", {
+        api.post("/v1/admin/clients", {
           client_id: form.client_id || undefined,
           name: form.name,
           type: form.type,
@@ -172,7 +172,7 @@ function ClientsTab() {
 
   async function patch(id: string, body: Record<string, unknown>, msg = "Client updated.") {
     try {
-      await unwrap(api.patch(`/admin/clients/${id}`, body));
+      await unwrap(api.patch(`/v1/admin/clients/${id}`, body));
       toast.success(msg);
       load();
     } catch (err) {
@@ -182,7 +182,7 @@ function ClientsTab() {
 
   async function rotate(c: ClientDto) {
     try {
-      const r = await unwrap<{ client_secret: string }>(api.post(`/admin/clients/${c.id}/rotate-secret`));
+      const r = await unwrap<{ client_secret: string }>(api.post(`/v1/admin/clients/${c.id}/rotate-secret`));
       setReveal({ title: `New secret for ${c.client_id}`, value: r.client_secret });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Rotate failed.");
@@ -395,7 +395,7 @@ function InvitesTab() {
     setBusy(true);
     try {
       const r = await unwrap<InviteResult>(
-        api.post("/admin/invites", { email, display_name: displayName || undefined }),
+        api.post("/v1/admin/invites", { email, display_name: displayName || undefined }),
       );
       setEmail("");
       setDisplayName("");
@@ -450,7 +450,7 @@ function UsersTab() {
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback((q: string) => {
-    unwrap(api.get("/admin/users", { params: { search: q || undefined } }))
+    unwrap(api.get("/v1/admin/users", { params: { search: q || undefined } }))
       .then((d) => {
         const r = d as { users: UserDto[]; total: number };
         setUsers(r.users);
@@ -464,7 +464,7 @@ function UsersTab() {
   async function act(u: UserDto, action: "disable" | "enable") {
     setBusy(u.id);
     try {
-      await api.post(`/admin/users/${u.id}/${action}`);
+      await api.post(`/v1/admin/users/${u.id}/${action}`);
       toast.success(`${u.email} ${action}d.`);
       load(applied);
     } catch (err) {

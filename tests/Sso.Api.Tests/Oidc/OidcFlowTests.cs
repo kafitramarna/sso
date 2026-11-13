@@ -302,7 +302,7 @@ public class OidcFlowTests : IClassFixture<SsoApiFactory>
     {
         using var client = NewClient();
 
-        using var createReq = new HttpRequestMessage(HttpMethod.Post, "/admin/clients")
+        using var createReq = new HttpRequestMessage(HttpMethod.Post, "/v1/admin/clients")
         {
             Content = JsonContent.Create(new
             {
@@ -322,7 +322,7 @@ public class OidcFlowTests : IClassFixture<SsoApiFactory>
             .Should().StartWith("cli_");
 
         // list must NOT leak the secret
-        using var listReq = new HttpRequestMessage(HttpMethod.Get, "/admin/clients");
+        using var listReq = new HttpRequestMessage(HttpMethod.Get, "/v1/admin/clients");
         listReq.Headers.Add("X-Admin-Key", "test-admin-key");
         var list = await client.SendAsync(listReq);
         (await list.Content.ReadAsStringAsync()).Should().NotContain("client_secret");
@@ -333,7 +333,7 @@ public class OidcFlowTests : IClassFixture<SsoApiFactory>
     {
         using var client = NewClient();
 
-        var res = await client.GetAsync("/admin/clients");
+        var res = await client.GetAsync("/v1/admin/clients");
 
         res.StatusCode.Should().Be(HttpStatusCode.Forbidden);
     }

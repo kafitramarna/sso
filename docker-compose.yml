@@ -43,7 +43,7 @@ services:
       SSO_DB: Host=sso-postgres;Port=5432;Database=sso;Username=sso;Password=${POSTGRES_PASSWORD}
       SSO_REDIS: sso-redis:6379,password=${REDIS_PASSWORD}
       Auth__Issuer: https://${DOMAIN}
-      Cors__Origins: https://${DOMAIN},https://${OFFICE_DOMAIN}
+      Cors__Origins: https://${DOMAIN}${OFFICE_DOMAIN:+,https://${OFFICE_DOMAIN}}
       App__WebBaseUrl: https://${DOMAIN}
       AllowSelfRegistration: "false"
       Signing__KeyPath: ${SIGNING_KEY_PATH:-/run/secrets/signing_key}

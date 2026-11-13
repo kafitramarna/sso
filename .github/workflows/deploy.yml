@@ -66,7 +66,8 @@ jobs:
             --exclude '.env' --exclude '*.pem' --exclude '*.key' \
             --exclude 'deploy/signing/' --exclude 'deploy/.env' \
             --exclude 'bin/' --exclude 'obj/' --exclude 'dist/' \
-            --exclude 'spikes/' \
+            --exclude 'spikes/' --exclude 'shots/' \
+            --exclude 'docker-compose.override.yml' \
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes" \
             ./ "$VPS_USER@$VPS_HOST:/opt/apps/$APP_NAME/"
 

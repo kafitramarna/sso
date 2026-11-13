@@ -65,7 +65,7 @@ public class AuthEndpointsTests : IClassFixture<SsoApiFactory>
     public async Task Invite_accept_login_refresh_logout_full_cycle()
     {
         // 1. admin creates invite via X-Admin-Key (KD-06)
-        using var inviteReq = new HttpRequestMessage(HttpMethod.Post, "/admin/invites");
+        using var inviteReq = new HttpRequestMessage(HttpMethod.Post, "/v1/admin/invites");
         inviteReq.Headers.Add("X-Admin-Key", "test-admin-key");
         inviteReq.Content = JsonContent.Create(new { email = "invited@test.local" });
         var invite = await _client.SendAsync(inviteReq);
@@ -103,7 +103,7 @@ public class AuthEndpointsTests : IClassFixture<SsoApiFactory>
     [Fact]
     public async Task Admin_endpoint_rejects_missing_key()
     {
-        var res = await _client.PostAsJsonAsync("/admin/invites",
+        var res = await _client.PostAsJsonAsync("/v1/admin/invites",
             new { email = "x@test.local" });
 
         res.StatusCode.Should().Be(HttpStatusCode.Forbidden);

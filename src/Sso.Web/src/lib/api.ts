@@ -3,7 +3,7 @@ import type { Envelope } from "./types";
 
 /**
  * Same-origin client — the vite proxy (dev) or NPM (prod) forwards
- * /v1, /oauth, /.well-known, /admin, /health to Sso.Api.
+ * /v1, /oauth, /.well-known, /health to Sso.Api.
  */
 export const api = axios.create({ baseURL: "/", withCredentials: true });
 

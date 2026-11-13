@@ -47,6 +47,7 @@ services:
       App__WebBaseUrl: https://${DOMAIN}
       AllowSelfRegistration: "false"
       Signing__KeyPath: ${SIGNING_KEY_PATH:-/run/secrets/signing_key}
+      Admin__ApiKey: ${ADMIN_API_KEY:-}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
       Email__Provider: ${EMAIL_PROVIDER:-smtp}

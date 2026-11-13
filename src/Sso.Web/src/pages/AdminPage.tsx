@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import { Copy, Loader2, Plus, Search, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { api, unwrap } from "../lib/api";
-import type { ClientDto, InviteResult } from "../lib/types";
+import type { ClientDto, InviteResult, UserDto } from "../lib/types";
 import { Alert } from "../components/ui/alert";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
@@ -13,6 +13,7 @@ import { Input } from "../components/ui/input";
 import { Skeleton } from "../components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Field } from "../components/Field";
 import { TagInput } from "../components/TagInput";
 import { ScopePicker } from "../components/ScopePicker";
@@ -209,14 +210,13 @@ function ClientsTab() {
               <Field label="Name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-muted-foreground">Type</label>
-                <select
-                  value={form.type}
-                  onChange={(e) => setForm({ ...form, type: e.target.value as ClientForm["type"] })}
-                  className="h-9 w-full rounded border border-input bg-transparent px-3 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                >
-                  <option value="confidential">confidential — server-side, gets a secret</option>
-                  <option value="public">public — SPA or mobile, no secret</option>
-                </select>
+                <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as ClientForm["type"] })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="confidential">confidential — server-side, gets a secret</SelectItem>
+                    <SelectItem value="public">public — SPA or mobile, no secret</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <TagInput
                 label="Redirect URIs"
@@ -442,15 +442,31 @@ function InvitesTab() {
 /* ---------- users ---------- */
 
 function UsersTab() {
-  const [userId, setUserId] = useState("");
-  const [busy, setBusy] = useState<"disable" | "enable" | null>(null);
+  const [users, setUsers] = useState<UserDto[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [search, setSearch] = useState("");
+  const [applied, setApplied] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
 
-  async function act(action: "disable" | "enable") {
-    setBusy(action);
+  const load = useCallback((q: string) => {
+    unwrap(api.get("/admin/users", { params: { search: q || undefined } }))
+      .then((d) => {
+        const r = d as { users: UserDto[]; total: number };
+        setUsers(r.users);
+        setTotal(r.total);
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : "Could not load users."));
+  }, []);
+
+  useEffect(() => load(applied), [load, applied]);
+
+  async function act(u: UserDto, action: "disable" | "enable") {
+    setBusy(u.id);
     try {
-      await api.post(`/admin/users/${userId.trim()}/${action}`);
-      toast.success(`User ${action}d.`);
-      setUserId("");
+      await api.post(`/admin/users/${u.id}/${action}`);
+      toast.success(`${u.email} ${action}d.`);
+      load(applied);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Action failed.");
     } finally {
@@ -462,24 +478,63 @@ function UsersTab() {
     <Card>
       <CardHeader>
         <CardTitle>Users</CardTitle>
-        <CardDescription>Enable or disable an account by user ID. Disabling revokes all sessions immediately.</CardDescription>
+        <CardDescription>{total} account{total === 1 ? "" : "s"}. Disabling revokes all sessions immediately.</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <Field
-          label="User ID"
-          placeholder="00000000-0000-0000-0000-000000000000"
-          value={userId}
-          onChange={(e) => setUserId(e.target.value)}
-          className="font-mono text-xs"
-        />
-        <div className="flex gap-2">
-          <Button variant="destructive" disabled={busy !== null || !userId.trim()} onClick={() => void act("disable")}>
-            {busy === "disable" && <Loader2 className="animate-spin" />} Disable
-          </Button>
-          <Button variant="outline" disabled={busy !== null || !userId.trim()} onClick={() => void act("enable")}>
-            {busy === "enable" && <Loader2 className="animate-spin" />} Enable
-          </Button>
-        </div>
+      <CardContent>
+        {error && <Alert variant="destructive" className="mb-4">{error}</Alert>}
+        <form
+          className="relative mb-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setApplied(search.trim());
+          }}
+        >
+          <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
+          <Input placeholder="Search email or name — press Enter" className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
+        </form>
+        {users === null ? (
+          <div className="space-y-2"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div>
+        ) : users.length === 0 ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">No users match that search.</p>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>User</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Joined</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {users.map((u) => (
+                <TableRow key={u.id}>
+                  <TableCell>
+                    <p className="font-medium">{u.display_name || u.email}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {u.display_name ? u.email : ""} {u.is_sso_admin && <Badge variant="venus" className="ml-1">sso_admin</Badge>}
+                    </p>
+                  </TableCell>
+                  <TableCell>
+                    {u.status === "disabled" ? <Badge variant="secondary">disabled</Badge> : u.email_verified ? <Badge variant="success">verified</Badge> : <Badge variant="warning">unverified</Badge>}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{fmt(u.created_at)}</TableCell>
+                  <TableCell className="text-right">
+                    {u.status === "disabled" ? (
+                      <Button variant="outline" size="sm" disabled={busy !== null} onClick={() => void act(u, "enable")}>
+                        {busy === u.id ? <Loader2 className="animate-spin" /> : "Enable"}
+                      </Button>
+                    ) : (
+                      <Button variant="ghost" size="sm" disabled={busy !== null} onClick={() => void act(u, "disable")}>
+                        {busy === u.id ? <Loader2 className="animate-spin" /> : "Disable"}
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </CardContent>
     </Card>
   );

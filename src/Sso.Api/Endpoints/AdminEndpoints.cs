@@ -32,6 +32,15 @@ public static class AdminEndpoints
                 }, StatusCodes.Status201Created);
             });
 
+        group.MapGet("/users", async (
+                string? search, int? page, HttpContext http, AuthService auth,
+                IConfiguration config, CancellationToken ct) =>
+            {
+                RequireAdmin(http, config);
+                var (users, total) = await auth.ListUsersAsync(search, page ?? 1, 25, ct);
+                return ApiEnvelope.Ok(new { users, total });
+            });
+
         group.MapPost("/users/{userId:guid}/disable", async (
                 Guid userId, HttpContext http, AuthService auth,
                 IConfiguration config, CancellationToken ct) =>

@@ -291,6 +291,23 @@ public sealed partial class AuthService(
 
     // --- admin ---
 
+    public async Task<(IReadOnlyList<UserDto> Users, int Total)> ListUsersAsync(
+        string? search, int page, int pageSize, CancellationToken ct = default)
+    {
+        var q = db.Users.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.Trim();
+            q = q.Where(u => u.Email.Contains(s) || (u.DisplayName != null && u.DisplayName.Contains(s)));
+        }
+        var total = await q.CountAsync(ct);
+        var rows = await q.OrderBy(u => u.Email)
+            .Skip(Math.Max(page - 1, 0) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(ct);
+        return (rows.ConvertAll(u => u.ToDto()), total);
+    }
+
     public async Task SetUserDisabledAsync(Guid userId, bool disabled, Guid actorUserId, IPAddress? ip, string? userAgent, CancellationToken ct = default)
     {
         var user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId, ct)

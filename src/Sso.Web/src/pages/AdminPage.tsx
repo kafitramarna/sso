@@ -58,15 +58,15 @@ function RevealDialog({
   const [ack, setAck] = useState(false);
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent className="overflow-hidden" onInteractOutside={(e) => e.preventDefault()}>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ShieldAlert className="size-5 text-warning" /> {title}
+          <DialogTitle className="flex items-center gap-2 break-all">
+            <ShieldAlert className="size-5 shrink-0 text-warning" /> {title}
           </DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <div className="flex items-center gap-2">
-          <code className="min-w-0 flex-1 truncate rounded border bg-secondary px-3 py-2 font-mono text-xs">{value}</code>
+        <div className="flex min-w-0 items-center gap-2">
+          <code className="min-w-0 flex-1 break-all rounded border bg-secondary px-3 py-2 font-mono text-xs leading-relaxed">{value}</code>
           <Button variant="outline" size="icon" aria-label="Copy" onClick={() => void navigator.clipboard.writeText(value).then(() => toast.success("Copied."))}>
             <Copy />
           </Button>
@@ -387,7 +387,7 @@ function RotateConfirm({ onConfirm, clientId }: { onConfirm: () => Promise<void>
 function InvitesTab() {
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [reveal, setReveal] = useState<{ title: string; value: string } | null>(null);
+  const [reveal, setReveal] = useState<{ title: string; value: string; description?: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function onSubmit(e: FormEvent) {
@@ -399,7 +399,11 @@ function InvitesTab() {
       );
       setEmail("");
       setDisplayName("");
-      setReveal({ title: `Invite for ${r.email} — expires ${fmt(r.expires_at)}`, value: r.invite_url });
+      setReveal({
+        title: "Invite created",
+        value: r.invite_url,
+        description: `Send this link to ${r.email}. It works once and expires ${fmt(r.expires_at)}.`,
+      });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Invite failed.");
     } finally {
@@ -426,7 +430,7 @@ function InvitesTab() {
         <RevealDialog
           open
           title={reveal.title}
-          description="Send this link to the person you're inviting. It works once."
+          description={reveal.description ?? "Send this link to the person you're inviting. It works once."}
           value={reveal.value}
           onClose={() => setReveal(null)}
         />

@@ -13,6 +13,7 @@ import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import AcceptInvitePage from "./pages/auth/AcceptInvitePage";
 import AccountPage from "./pages/AccountPage";
 import AdminPage from "./pages/AdminPage";
+import NotFoundPage from "./pages/NotFoundPage";
 
 function HomeRedirect() {
   const status = useAuth((s) => s.status);
@@ -61,7 +62,7 @@ export default function App() {
         />
       </Route>
       <Route path="/" element={<HomeRedirect />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }

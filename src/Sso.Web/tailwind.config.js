@@ -1,47 +1,45 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: "class",
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        brand: {
-          50: "var(--brand-50)",
-          500: "var(--brand-500)",
-          600: "var(--brand-600)",
-          700: "var(--brand-700)",
-        },
-        surface: "var(--bg)",
-        subtle: "var(--bg-subtle)",
-        muted: "var(--bg-muted)",
-        border: {
-          DEFAULT: "var(--border)",
-          strong: "var(--border-strong)",
-        },
-        fg: {
-          DEFAULT: "var(--fg)",
-          muted: "var(--fg-muted)",
-          subtle: "var(--fg-subtle)",
-        },
-        status: {
-          warn: "var(--status-warn)",
-          ok: "var(--status-ok)",
-          error: "var(--status-error)",
-        },
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        card: { DEFAULT: "hsl(var(--card))", foreground: "hsl(var(--card-foreground))" },
+        primary: { DEFAULT: "hsl(var(--primary))", foreground: "hsl(var(--primary-foreground))" },
+        secondary: { DEFAULT: "hsl(var(--secondary))", foreground: "hsl(var(--secondary-foreground))" },
+        muted: { DEFAULT: "hsl(var(--muted))", foreground: "hsl(var(--muted-foreground))" },
+        accent: { DEFAULT: "hsl(var(--accent))", foreground: "hsl(var(--accent-foreground))" },
+        destructive: { DEFAULT: "hsl(var(--destructive))", foreground: "hsl(var(--destructive-foreground))" },
+        venus: { DEFAULT: "hsl(var(--venus))", foreground: "hsl(var(--venus-foreground))" },
+        success: "hsl(var(--success))",
+        warning: "hsl(var(--warning))",
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        sans: ["Inter Variable", "system-ui", "sans-serif"],
+        display: ["Space Grotesk Variable", "system-ui", "sans-serif"],
         mono: ["JetBrains Mono", "SF Mono", "monospace"],
       },
       borderRadius: {
-        sm: "var(--radius-sm)",
+        lg: "calc(var(--radius) + 2px)",
         DEFAULT: "var(--radius)",
-        lg: "var(--radius-lg)",
+        md: "calc(var(--radius) - 2px)",
+        sm: "calc(var(--radius) - 4px)",
       },
-      boxShadow: {
-        card: "0 1px 2px rgb(17 24 39 / 0.05)",
-        pop: "0 4px 16px rgb(17 24 39 / 0.12)",
+      keyframes: {
+        "fade-in": { from: { opacity: "0" }, to: { opacity: "1" } },
+        "rise-in": { from: { opacity: "0", transform: "translateY(8px)" }, to: { opacity: "1", transform: "none" } },
+      },
+      animation: {
+        "fade-in": "fade-in 150ms ease-out",
+        "rise-in": "rise-in 200ms ease-out",
       },
     },
   },
-  plugins: [],
+  plugins: [require("tailwindcss-animate")],
 };

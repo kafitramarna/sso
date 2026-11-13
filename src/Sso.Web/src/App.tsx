@@ -1,54 +1,67 @@
-import { useEffect, useState } from "react";
-import { Route, Routes } from "react-router-dom";
-import { getReady, type ReadyReport } from "./lib/api";
+import { useEffect } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
+import { useAuth } from "./lib/auth";
+import { StatusView } from "./components/StatusView";
+import { RequireAuth } from "./components/RequireAuth";
+import { AuthLayout } from "./components/layout/AuthLayout";
+import { AppLayout } from "./components/layout/AppLayout";
+import LoginPage from "./pages/auth/LoginPage";
+import RegisterPage from "./pages/auth/RegisterPage";
+import VerifyEmailPage from "./pages/auth/VerifyEmailPage";
+import ForgotPasswordPage from "./pages/auth/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
+import AcceptInvitePage from "./pages/auth/AcceptInvitePage";
+import AccountPage from "./pages/AccountPage";
+import AdminPage from "./pages/AdminPage";
 
-function HomePage() {
-  const [ready, setReady] = useState<ReadyReport | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    getReady()
-      .then(setReady)
-      .catch((e) => setError(e instanceof Error ? e.message : "unreachable"));
-  }, []);
-
-  return (
-    <main className="min-h-screen grid place-items-center p-6">
-      <div className="w-full max-w-md rounded-lg border border-border bg-white p-8 shadow-card">
-        <p className="text-xs font-semibold uppercase tracking-widest text-brand-600">
-          VenusVerse
-        </p>
-        <h1 className="mt-1 text-2xl font-bold">SSO</h1>
-        <p className="mt-2 text-sm text-fg-muted">
-          Skeleton OK — halaman login, consent, account, dan admin dibangun di Fase 1–3
-          (lihat <code className="font-mono text-xs">docs/01-PRD.md</code>).
-        </p>
-        <div className="mt-6 rounded border border-border bg-subtle p-3 font-mono text-xs">
-          <p className="text-fg-subtle">/health/ready</p>
-          {error && <p className="mt-1 text-status-error">api unreachable: {error}</p>}
-          {ready && (
-            <ul className="mt-1 space-y-0.5">
-              {Object.entries(ready.dependencies).map(([name, dep]) => (
-                <li key={name} className="flex justify-between">
-                  <span>{name}</span>
-                  <span className={dep.status === "healthy" ? "text-status-ok" : "text-status-warn"}>
-                    {dep.status}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+function HomeRedirect() {
+  const status = useAuth((s) => s.status);
+  if (status === "boot") {
+    return (
+      <div className="grid min-h-screen place-items-center">
+        <StatusView state="loading" title="Restoring session" />
       </div>
-    </main>
-  );
+    );
+  }
+  return <Navigate to={status === "authed" ? "/account" : "/login"} replace />;
 }
 
 export default function App() {
+  const init = useAuth((s) => s.init);
+
+  useEffect(() => {
+    void init();
+  }, [init]);
+
   return (
     <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="*" element={<HomePage />} />
+      <Route element={<AuthLayout />}>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/accept-invite" element={<AcceptInvitePage />} />
+      </Route>
+      <Route
+        element={
+          <RequireAuth>
+            <AppLayout />
+          </RequireAuth>
+        }
+      >
+        <Route path="/account" element={<AccountPage />} />
+        <Route
+          path="/admin"
+          element={
+            <RequireAuth admin>
+              <AdminPage />
+            </RequireAuth>
+          }
+        />
+      </Route>
+      <Route path="/" element={<HomeRedirect />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }

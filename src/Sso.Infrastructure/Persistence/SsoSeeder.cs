@@ -49,10 +49,10 @@ public static class SsoSeeder
         if (!await db.Clients.AnyAsync(ct))
         {
             var secret = config["SEED_AGENTOFFICE_CLIENT_SECRET"];
-            if (!string.IsNullOrWhiteSpace(secret))
+            var redirectUrisRaw = config["SEED_AGENTOFFICE_REDIRECT_URIS"];
+            if (!string.IsNullOrWhiteSpace(secret) && !string.IsNullOrWhiteSpace(redirectUrisRaw))
             {
-                var redirectUris = (config["SEED_AGENTOFFICE_REDIRECT_URIS"]
-                        ?? "http://localhost:3000/auth/callback")
+                var redirectUris = redirectUrisRaw
                     .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
                 db.Clients.Add(new Client
@@ -71,6 +71,11 @@ public static class SsoSeeder
                     CreatedAt = DateTimeOffset.UtcNow,
                 });
                 logger.LogInformation("seeded oidc client agent-office");
+            }
+            else if (!string.IsNullOrWhiteSpace(secret) || !string.IsNullOrWhiteSpace(redirectUrisRaw))
+            {
+                logger.LogWarning(
+                    "clients table empty but SEED_AGENTOFFICE_* incomplete — no client seeded");
             }
         }
 

@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: {
-      port: 5175,
+      port: Number(env.VITE_PORT ?? 5175),
       proxy: {
         ...Object.fromEntries(proxied.map((p) => [p, apiBase])),
         "/admin": {

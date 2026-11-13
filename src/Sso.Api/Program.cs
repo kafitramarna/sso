@@ -98,7 +98,10 @@ builder.Services.AddRateLimiter(options =>
 });
 
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy =>
-    policy.WithOrigins(builder.Configuration["Cors:Origins"]?.Split(',') ?? ["http://localhost:5175"])
+    policy.WithOrigins(
+            (builder.Configuration["Cors:Origins"]
+                ?? throw new InvalidOperationException("Cors:Origins is not configured"))
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
         .AllowAnyHeader()
         .AllowAnyMethod()
         .AllowCredentials()));

@@ -43,9 +43,15 @@ public sealed class SmtpNotifier(IConfiguration config, ILogger<SmtpNotifier> lo
                 return;
             }
 
+            var from = config["Email:From"];
+            if (string.IsNullOrWhiteSpace(from))
+            {
+                logger.LogWarning("email skipped: Email:From not configured (to={To})", to);
+                return;
+            }
+
             var message = new MimeMessage();
-            message.From.Add(MailboxAddress.Parse(
-                config["Email:From"] ?? "SSO <no-reply@localhost>"));
+            message.From.Add(MailboxAddress.Parse(from));
             message.To.Add(MailboxAddress.Parse(to));
             message.Subject = subject;
             message.Body = new TextPart("plain") { Text = body };

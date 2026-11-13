@@ -56,7 +56,8 @@ public static class DependencyInjection
         services.AddSingleton(new AuthOptions
         {
             AllowSelfRegistration = configuration.GetValue("AllowSelfRegistration", false),
-            WebBaseUrl = configuration["App:WebBaseUrl"] ?? "http://localhost:5175",
+            WebBaseUrl = configuration["App:WebBaseUrl"]
+                ?? throw new InvalidOperationException("App:WebBaseUrl is not configured"),
         });
 
         services.AddSingleton<Rs256JwtTokenService>();
@@ -79,8 +80,10 @@ public static class DependencyInjection
                 : new InMemoryOidcRefreshStore());
         services.AddSingleton(new OidcOptions
         {
-            Issuer = configuration["Auth:Issuer"] ?? "sso",
-            WebBaseUrl = configuration["App:WebBaseUrl"] ?? "http://localhost:5175",
+            Issuer = configuration["Auth:Issuer"]
+                ?? throw new InvalidOperationException("Auth:Issuer is not configured"),
+            WebBaseUrl = configuration["App:WebBaseUrl"]
+                ?? throw new InvalidOperationException("App:WebBaseUrl is not configured"),
             CodeTtl = TimeSpan.FromSeconds(configuration.GetValue("Oidc:CodeTtlSeconds", 90)),
             RefreshTokenTtl = TimeSpan.FromDays(configuration.GetValue("Oidc:RefreshTokenDays", 30)),
         });

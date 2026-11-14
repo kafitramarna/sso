@@ -21,6 +21,10 @@ public static class AuthEndpoints
     {
         var group = routes.MapGroup("/v1/auth");
 
+        group.MapGet("/config", (AuthOptions options) =>
+            ApiEnvelope.Ok(new { options.AllowSelfRegistration }))
+            .AllowAnonymous();
+
         group.MapPost("/register", async (
                 RegisterRequest request, HttpContext http, AuthService auth, CancellationToken ct) =>
             {

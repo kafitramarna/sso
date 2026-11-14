@@ -65,3 +65,10 @@ export interface ReadyReport {
 }
 
 export const getReady = () => api.get<ReadyReport>("/health/ready").then((r) => r.data);
+
+export interface AuthConfig {
+  allow_self_registration: boolean;
+}
+
+export const getAuthConfig = () =>
+  unwrap(api.get<Envelope<AuthConfig>>("/v1/auth/config"));

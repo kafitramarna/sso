@@ -19,7 +19,7 @@ function oauthContinuation(returnTo: string | null): string | null {
 }
 
 export default function LoginPage() {
-  const { status, login } = useAuth();
+  const { status, login, allowSelfRegistration } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [params] = useSearchParams();
@@ -81,14 +81,18 @@ export default function LoginPage() {
         </Button>
       </form>
 
-      <div className="mt-8 flex items-center gap-3 text-xs text-muted-foreground">
-        <span className="h-px flex-1 bg-border" />
-        New to VenusVerse?
-        <span className="h-px flex-1 bg-border" />
-      </div>
-      <Button variant="outline" className="mt-3 w-full" asChild>
-        <Link to="/register">Create account</Link>
-      </Button>
+      {allowSelfRegistration === true && (
+        <>
+          <div className="mt-8 flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            New to VenusVerse?
+            <span className="h-px flex-1 bg-border" />
+          </div>
+          <Button variant="outline" className="mt-3 w-full" asChild>
+            <Link to="/register">Create account</Link>
+          </Button>
+        </>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { api, tokenStore, unwrap } from "./api";
+import { api, getAuthConfig, tokenStore, unwrap } from "./api";
 import type { AuthPayload, UserDto } from "./types";
 
 type Status = "boot" | "anon" | "authed";
@@ -7,6 +7,8 @@ type Status = "boot" | "anon" | "authed";
 interface AuthState {
   status: Status;
   user: UserDto | null;
+  /** null while unfetched — treated as invite-only (KD-09 prod posture). */
+  allowSelfRegistration: boolean | null;
   init: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   setAuth: (payload: AuthPayload) => void;
@@ -46,8 +48,15 @@ export const useAuth = create<AuthState>((set, get) => {
   return {
     status: "boot",
     user: null,
+    allowSelfRegistration: null,
 
     init: async () => {
+      try {
+        const cfg = await getAuthConfig();
+        set({ allowSelfRegistration: cfg.allow_self_registration });
+      } catch {
+        /* unreachable config — keep null, register stays hidden */
+      }
       await get().refresh();
     },
 

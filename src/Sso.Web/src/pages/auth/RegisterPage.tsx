@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { Loader2, MailCheck, Lock } from "lucide-react";
 import { api, ApiError, unwrap } from "../../lib/api";
+import { useAuth } from "../../lib/auth";
 import { Alert } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import { Field, PasswordField } from "../../components/Field";
@@ -15,6 +16,7 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [pwError, setPwError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const allowSelfRegistration = useAuth((s) => s.allowSelfRegistration);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -35,7 +37,7 @@ export default function RegisterPage() {
     }
   }
 
-  if (state === "closed") {
+  if (state === "closed" || allowSelfRegistration === false) {
     return (
       <div className="animate-rise-in">
         <StatusView state="error" title="Registration is invite-only">

@@ -101,6 +101,16 @@ namespace Sso.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("LaunchUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("launch_url");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -111,6 +121,10 @@ namespace Sso.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text[]")
                         .HasColumnName("redirect_uris");
+
+                    b.Property<bool>("RequireAssignment")
+                        .HasColumnType("boolean")
+                        .HasColumnName("require_assignment");
 
                     b.Property<string>("SecretHash")
                         .HasColumnType("text")
@@ -134,6 +148,45 @@ namespace Sso.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_clients_client_id");
 
                     b.ToTable("clients", (string)null);
+                });
+
+            modelBuilder.Entity("Sso.Domain.Entities.ClientAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ClientId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("client_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<Guid>("GrantedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("granted_by");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_client_assignments");
+
+                    b.HasIndex("ClientId")
+                        .HasDatabaseName("ix_client_assignments_client_id");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_client_assignments_user_id");
+
+                    b.HasIndex("UserId", "ClientId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_client_assignments_user_id_client_id");
+
+                    b.ToTable("client_assignments", (string)null);
                 });
 
             modelBuilder.Entity("Sso.Domain.Entities.OneTimeToken", b =>
@@ -253,6 +306,27 @@ namespace Sso.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_users_email");
 
                     b.ToTable("users", (string)null);
+                });
+
+            modelBuilder.Entity("Sso.Domain.Entities.ClientAssignment", b =>
+                {
+                    b.HasOne("Sso.Domain.Entities.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_client_assignments_clients_client_id");
+
+                    b.HasOne("Sso.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_client_assignments_users_user_id");
+
+                    b.Navigation("Client");
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Sso.Domain.Entities.OneTimeToken", b =>

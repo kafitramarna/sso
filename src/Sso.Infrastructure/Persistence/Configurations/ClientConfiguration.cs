@@ -14,5 +14,7 @@ public sealed class ClientConfiguration : IEntityTypeConfiguration<Client>
         b.HasIndex(c => c.ClientId).IsUnique();
         b.Property(c => c.Name).HasMaxLength(200);
         b.Property(c => c.Type).HasConversion<string>().HasMaxLength(20);
+        b.Property(c => c.Description).HasMaxLength(500);
+        b.Property(c => c.LaunchUrl).HasMaxLength(500);
     }
 }

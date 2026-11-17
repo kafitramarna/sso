@@ -13,6 +13,7 @@ import ResetPasswordPage from "./pages/auth/ResetPasswordPage";
 import AcceptInvitePage from "./pages/auth/AcceptInvitePage";
 import AccountPage from "./pages/AccountPage";
 import AdminPage from "./pages/AdminPage";
+import DashboardPage from "./pages/DashboardPage";
 import NotFoundPage from "./pages/NotFoundPage";
 
 function HomeRedirect() {
@@ -24,7 +25,7 @@ function HomeRedirect() {
       </div>
     );
   }
-  return <Navigate to={status === "authed" ? "/account" : "/login"} replace />;
+  return <Navigate to={status === "authed" ? "/dashboard" : "/login"} replace />;
 }
 
 export default function App() {
@@ -51,6 +52,7 @@ export default function App() {
           </RequireAuth>
         }
       >
+        <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/account" element={<AccountPage />} />
         <Route
           path="/admin"

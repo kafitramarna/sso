@@ -21,6 +21,7 @@ public static class AuditEvents
     public const string UserEnabled = "user.enabled";
 
     public const string OidcAuthorize = "oidc.authorize";
+    public const string OidcAuthorizeDenied = "oidc.authorize_denied";
     public const string OidcToken = "oidc.token";
     public const string OidcTokenFailed = "oidc.token_failed";
     public const string OidcRefreshReuse = "oidc.refresh_reuse_detected";
@@ -28,4 +29,6 @@ public static class AuditEvents
     public const string ClientCreated = "client.created";
     public const string ClientUpdated = "client.updated";
     public const string ClientSecretRotated = "client.secret_rotated";
+    public const string AppGranted = "app.granted";
+    public const string AppRevoked = "app.revoked";
 }

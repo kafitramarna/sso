@@ -11,6 +11,7 @@ public sealed class SsoDbContext(DbContextOptions<SsoDbContext> options) : DbCon
     public DbSet<OneTimeToken> OneTimeTokens => Set<OneTimeToken>();
     public DbSet<AuditEvent> AuditEvents => Set<AuditEvent>();
     public DbSet<Client> Clients => Set<Client>();
+    public DbSet<ClientAssignment> ClientAssignments => Set<ClientAssignment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

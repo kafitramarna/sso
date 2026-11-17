@@ -23,7 +23,7 @@ export function RequireAuth({ admin = false, children }: { admin?: boolean; chil
   }
 
   if (admin && !user?.is_sso_admin) {
-    return <Navigate to="/account" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

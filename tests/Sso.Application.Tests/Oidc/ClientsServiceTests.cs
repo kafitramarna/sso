@@ -18,7 +18,7 @@ public class ClientsServiceTests
 
         var result = await h.Clients.CreateAsync(
             new CreateClientRequest(null, "Agent Office", "confidential",
-                ["https://office.example.com/cb"], null, null),
+                ["https://office.example.com/cb"], null, null, null, null, null),
             Guid.NewGuid(), Ip, "ua", default);
 
         result.PlainSecret.Should().NotBeNullOrEmpty();          // shown once (FR-C02)
@@ -36,7 +36,7 @@ public class ClientsServiceTests
 
         var result = await h.Clients.CreateAsync(
             new CreateClientRequest("spa-app", "SPA", "public",
-                ["https://app.example.com/cb"], null, null),
+                ["https://app.example.com/cb"], null, null, null, null, null),
             Guid.NewGuid(), Ip, "ua", default);
 
         result.PlainSecret.Should().BeNull();
@@ -51,7 +51,7 @@ public class ClientsServiceTests
         h.SeedClient();
 
         var act = () => h.Clients.CreateAsync(
-            new CreateClientRequest("agent-office", "Dup", "confidential", ["https://x.co/cb"], null, null),
+            new CreateClientRequest("agent-office", "Dup", "confidential", ["https://x.co/cb"], null, null, null, null, null),
             Guid.NewGuid(), Ip, "ua", default);
 
         var err = await act.Should().ThrowAsync<Sso.Application.Errors.ApiError>();
@@ -78,7 +78,7 @@ public class ClientsServiceTests
         var client = h.SeedClient();
 
         var dto = await h.Clients.UpdateAsync(client.Id,
-            new UpdateClientRequest("Renamed", ["https://new.example.com/cb"], null, false, null),
+            new UpdateClientRequest("Renamed", ["https://new.example.com/cb"], null, false, null, null, null, null),
             Guid.NewGuid(), Ip, "ua", default);
 
         dto.Name.Should().Be("Renamed");

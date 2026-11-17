@@ -85,6 +85,13 @@ Dokumen lain WAJIB selaras dengan decision log ini. Jika ada dokumen/kode yang b
 - `sso_sess` hanya membuktikan "sesi hidup" (lookup `sso:fam:{id}`); ia **tidak pernah** men-rotate atau menggantikan `sso_rt`. GUID family 128-bit = unguessable, sepadan dengan session id klasik.
 - Ditambahkan saat implementasi Fase 2 (OIDC provider); melengkapi KD-03 tanpa mengubah kontrak `sso_rt`.
 
+## KD-14 — App launcher: per-user client assignment + gerbang `require_assignment`
+
+- `/dashboard` di Sso.Web = launcher aplikasi VenusVerse. Daftar kartu berasal dari `GET /v1/me/apps`: hanya client dengan `launch_url` terisi yang muncul — client OIDC-only tidak pernah menjadi kartu.
+- Tabel `client_assignments` (`user_id` × `client_id` unik, `granted_by`, `created_at`) menyimpan grant per-user. Admin mengganti set via `PUT /v1/admin/users/{id}/apps` (replace idempotent); grant/revoke diaudit append-only (`app.granted`/`app.revoked`).
+- `sso_admin` melihat dan bisa meluncur SEMUA client aktif tanpa baris assignment — konsisten antara `/v1/me/apps` dan gerbang authorize.
+- `clients.require_assignment=true` → `/oauth/authorize` menolak `access_denied` (redirect OAuth standar, bukan 400) untuk user tanpa assignment; `sso_admin` lolos. Default `false` = semua user boleh, perilaku lama.
+
 ## Masih terbuka (menunggu owner)
 
 - **OQ-1 Domain** — `sso.<domain>` dan `office.<domain>` pakai root domain apa? (menentukan `DOMAIN`, CORS, `redirect_uri`, cookie scope, `iss` claim)

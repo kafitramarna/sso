@@ -44,7 +44,7 @@ export default function LoginPage() {
         window.location.href = continuation;
       } else {
         const from = (location.state as { from?: string } | null)?.from;
-        navigate(from ?? "/account", { replace: true });
+        navigate(from ?? "/dashboard", { replace: true });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign-in failed.");

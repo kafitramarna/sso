@@ -10,6 +10,7 @@ public interface ISsoDbContext
     DbSet<OneTimeToken> OneTimeTokens { get; }
     DbSet<AuditEvent> AuditEvents { get; }
     DbSet<Client> Clients { get; }
+    DbSet<ClientAssignment> ClientAssignments { get; }
 
     DatabaseFacade Database { get; }
 

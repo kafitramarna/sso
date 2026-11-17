@@ -150,6 +150,52 @@ public class OidcServiceTests
             .Which.Error.Should().Be("consent_required");
     }
 
+    // --- require_assignment (KD-14) ---
+
+    [Fact]
+    public async Task Authorize_require_assignment_denies_unassigned_user()
+    {
+        using var h = new OidcHarness();
+        h.SeedClient(requireAssignment: true);
+        var user = h.SeedUser();
+
+        var outcome = await h.Service.DecideAuthorizeAsync(
+            ValidAuthorize(), user.Id, "http://return", default);
+
+        var err = outcome.Should().BeOfType<RedirectError>().Subject;
+        err.Error.Should().Be("access_denied");
+        err.Uri.Should().StartWith(Redirect);
+        err.State.Should().Be("state-1");
+        h.Audit.Entries.Should().Contain(e => e.Event == AuditEvents.OidcAuthorizeDenied);
+    }
+
+    [Fact]
+    public async Task Authorize_require_assignment_allows_assigned_user()
+    {
+        using var h = new OidcHarness();
+        var client = h.SeedClient(requireAssignment: true);
+        var user = h.SeedUser();
+        h.SeedAssignment(user, client);
+
+        var outcome = await h.Service.DecideAuthorizeAsync(
+            ValidAuthorize(), user.Id, "http://return", default);
+
+        outcome.Should().BeOfType<RedirectCode>();
+    }
+
+    [Fact]
+    public async Task Authorize_require_assignment_allows_sso_admin_without_assignment()
+    {
+        using var h = new OidcHarness();
+        h.SeedClient(requireAssignment: true);
+        var admin = h.SeedUser(admin: true);
+
+        var outcome = await h.Service.DecideAuthorizeAsync(
+            ValidAuthorize(), admin.Id, "http://return", default);
+
+        outcome.Should().BeOfType<RedirectCode>();
+    }
+
     // --- token exchange (authorization_code grant) ---
 
     private async Task<(string Code, string Verifier)> IssueCodeAsync(

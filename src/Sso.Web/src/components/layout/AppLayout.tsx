@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, Outlet } from "react-router-dom";
-import { KeyRound, LogOut, Moon, ShieldCheck, Sun, User as UserIcon } from "lucide-react";
+import { KeyRound, LayoutGrid, LogOut, Moon, ShieldCheck, Sun, User as UserIcon } from "lucide-react";
 import { useAuth } from "../../lib/auth";
 import { applyTheme, currentTheme } from "../../lib/theme";
 import { Wordmark } from "../Wordmark";
@@ -29,10 +29,15 @@ export function AppLayout() {
     <div className="min-h-screen bg-background">
       <header className="border-b">
         <div className="mx-auto flex h-14 max-w-4xl items-center justify-between px-4">
-          <Link to="/account" aria-label="Account">
+          <Link to="/dashboard" aria-label="Apps">
             <Wordmark />
           </Link>
           <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/dashboard">
+                <LayoutGrid /> Apps
+              </Link>
+            </Button>
             {user?.is_sso_admin && (
               <Button variant="ghost" size="sm" asChild>
                 <Link to="/admin">
@@ -52,6 +57,11 @@ export function AppLayout() {
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel className="max-w-56 truncate">{user?.email}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <Link to="/account">
+                    <UserIcon /> Account
+                  </Link>
+                </DropdownMenuItem>
                 {user?.is_sso_admin && (
                   <DropdownMenuItem className="text-xs text-venus">
                     <ShieldCheck className="size-3.5" /> sso_admin

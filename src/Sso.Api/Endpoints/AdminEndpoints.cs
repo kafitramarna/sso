@@ -103,6 +103,28 @@ public static class AdminEndpoints
                 });
             });
 
+        // --- app assignments (KD-14) — which clients a user may launch ---
+
+        group.MapGet("/users/{userId:guid}/apps", async (
+                Guid userId, HttpContext http, AssignmentsService apps,
+                IConfiguration config, CancellationToken ct) =>
+            {
+                RequireAdmin(http, config);
+                var ids = await apps.ClientIdsForUserAsync(userId, ct);
+                return ApiEnvelope.Ok(new { client_ids = ids });
+            });
+
+        group.MapPut("/users/{userId:guid}/apps", async (
+                Guid userId, SetUserAppsRequest request, HttpContext http,
+                AssignmentsService apps, IConfiguration config, CancellationToken ct) =>
+            {
+                RequireAdmin(http, config);
+                var ids = await apps.SetForUserAsync(
+                    userId, request, http.User.UserId() ?? Guid.Empty,
+                    http.Connection.RemoteIpAddress, Ua(http), ct);
+                return ApiEnvelope.Ok(new { client_ids = ids });
+            });
+
         group.MapPost("/users/{userId:guid}/enable", async (
                 Guid userId, HttpContext http, AuthService auth,
                 IConfiguration config, CancellationToken ct) =>

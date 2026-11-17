@@ -127,7 +127,9 @@ public sealed class OidcHarness : IDisposable
         string[]? redirectUris = null,
         string[]? scopes = null,
         bool skipConsent = true,
-        bool active = true)
+        bool active = true,
+        string? launchUrl = null,
+        bool requireAssignment = false)
     {
         var client = new Client
         {
@@ -141,6 +143,8 @@ public sealed class OidcHarness : IDisposable
             RedirectUris = [.. redirectUris ?? ["https://office.example.com/auth/callback"]],
             AllowedScopes = [.. scopes ?? ["openid", "profile", "email", "offline_access"]],
             SkipConsent = skipConsent,
+            LaunchUrl = launchUrl,
+            RequireAssignment = requireAssignment,
             Active = active,
             CreatedAt = Clock.UtcNow,
         };
@@ -149,19 +153,35 @@ public sealed class OidcHarness : IDisposable
         return client;
     }
 
-    public User SeedUser(string email = "user@example.com")
+    public User SeedUser(string email = "user@example.com", bool admin = false)
     {
         var user = new User
         {
             Id = Guid.NewGuid(),
             Email = email,
             EmailVerifiedAt = Clock.UtcNow,
+            IsSsoAdmin = admin,
             CreatedAt = Clock.UtcNow,
             UpdatedAt = Clock.UtcNow,
         };
         Db.Users.Add(user);
         Db.SaveChanges();
         return user;
+    }
+
+    public ClientAssignment SeedAssignment(User user, Client client, Guid? grantedBy = null)
+    {
+        var row = new ClientAssignment
+        {
+            Id = Guid.NewGuid(),
+            UserId = user.Id,
+            ClientId = client.Id,
+            GrantedBy = grantedBy ?? Guid.NewGuid(),
+            CreatedAt = Clock.UtcNow,
+        };
+        Db.ClientAssignments.Add(row);
+        Db.SaveChanges();
+        return row;
     }
 
     /// <summary>PKCE pair — the raw verifier goes to /oauth/token, the challenge to /oauth/authorize.</summary>

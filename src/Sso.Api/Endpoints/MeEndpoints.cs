@@ -2,6 +2,7 @@ using Sso.Api.Auth;
 using Sso.Api.Http;
 using Sso.Application.Auth;
 using Sso.Application.Errors;
+using Sso.Application.Oidc;
 
 namespace Sso.Api.Endpoints;
 
@@ -23,6 +24,12 @@ public static class MeEndpoints
         {
             var user = await auth.UpdateMeAsync(UserId(http), request, ct);
             return ApiEnvelope.Ok(new { user });
+        });
+
+        // KD-14 — apps the signed-in user may launch from /dashboard.
+        group.MapGet("/me/apps", async (HttpContext http, AssignmentsService apps, CancellationToken ct) =>
+        {
+            return ApiEnvelope.Ok(new { apps = await apps.ListForUserAsync(UserId(http), ct) });
         });
 
         group.MapPost("/me/change-password", async (

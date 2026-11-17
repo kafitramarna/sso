@@ -58,18 +58,29 @@ public sealed record OidcOptions
 
 public sealed record CreateClientRequest(
     string? ClientId, string Name, string Type,
-    string[] RedirectUris, string[]? AllowedScopes, bool? SkipConsent);
+    string[] RedirectUris, string[]? AllowedScopes, bool? SkipConsent,
+    string? LaunchUrl, string? Description, bool? RequireAssignment);
 
 public sealed record UpdateClientRequest(
     string? Name, string[]? RedirectUris, string[]? AllowedScopes,
-    bool? SkipConsent, bool? Active);
+    bool? SkipConsent, bool? Active,
+    string? LaunchUrl, string? Description, bool? RequireAssignment);
 
 public sealed record ClientDto(
     Guid Id, string ClientId, string Name, string Type, bool Active,
     string[] RedirectUris, string[] AllowedScopes, bool SkipConsent,
+    string? LaunchUrl, string? Description, bool RequireAssignment,
     DateTimeOffset CreatedAt);
 
 public sealed record CreatedClientResult(ClientDto Client, string? PlainSecret);
+
+// --- per-user app assignments (KD-14) ---
+
+/// <summary>Launcher card on GET /v1/me/apps — only clients with a launch_url qualify.</summary>
+public sealed record AppDto(string ClientId, string Name, string? Description, string? LaunchUrl);
+
+/// <summary>PUT /v1/admin/users/{id}/apps — replaces the user's assignment set.</summary>
+public sealed record SetUserAppsRequest(string[] ClientIds);
 
 /// <summary>OAuth error — maps to error redirect or 400 JSON (never both).</summary>
 public sealed class OidcError : Exception

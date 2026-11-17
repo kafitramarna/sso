@@ -33,7 +33,18 @@ export interface ClientDto {
   redirect_uris: string[];
   allowed_scopes: string[];
   skip_consent: boolean;
+  launch_url: string | null;
+  description: string | null;
+  require_assignment: boolean;
   created_at: string;
+}
+
+/** Launchable app on /dashboard — only clients with a launch_url appear here. */
+export interface AppDto {
+  client_id: string;
+  name: string;
+  description: string | null;
+  launch_url: string | null;
 }
 
 export interface InviteResult {

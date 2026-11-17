@@ -89,6 +89,7 @@ public static class DependencyInjection
         });
         services.AddScoped<OidcService>();
         services.AddScoped<ClientsService>();
+        services.AddScoped<AssignmentsService>();
 
         services.AddScoped<INotifier>(sp =>
             !string.IsNullOrWhiteSpace(configuration["Email:Smtp:Host"])

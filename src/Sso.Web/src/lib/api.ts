@@ -1,5 +1,5 @@
 import axios, { AxiosError, type AxiosResponse } from "axios";
-import type { Envelope } from "./types";
+import type { AppDto, Envelope } from "./types";
 
 /**
  * Same-origin client — the vite proxy (dev) or NPM (prod) forwards
@@ -72,3 +72,20 @@ export interface AuthConfig {
 
 export const getAuthConfig = () =>
   unwrap(api.get<Envelope<AuthConfig>>("/v1/auth/config"));
+
+// --- app launcher + per-user assignments (KD-14) ---
+
+export const getMyApps = () =>
+  unwrap(api.get<Envelope<{ apps: AppDto[] }>>("/v1/me/apps")).then((d) => d.apps);
+
+export const getUserApps = (userId: string) =>
+  unwrap(api.get<Envelope<{ client_ids: string[] }>>(`/v1/admin/users/${userId}/apps`)).then(
+    (d) => d.client_ids,
+  );
+
+export const setUserApps = (userId: string, clientIds: string[]) =>
+  unwrap(
+    api.put<Envelope<{ client_ids: string[] }>>(`/v1/admin/users/${userId}/apps`, {
+      client_ids: clientIds,
+    }),
+  ).then((d) => d.client_ids);

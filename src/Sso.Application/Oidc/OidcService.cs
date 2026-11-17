@@ -68,6 +68,23 @@ public sealed class OidcService(
             return new RedirectLogin(
                 $"{options.WebBaseUrl.TrimEnd('/')}/login?return={Uri.EscapeDataString(returnUrl)}");
 
+        // KD-14 — an admin-assigned app gate: without a client_assignment row
+        // (and without sso_admin) the user is sent back with access_denied.
+        if (client.RequireAssignment)
+        {
+            var granted = await db.Users.AsNoTracking()
+                .Where(u => u.Id == userId.Value)
+                .Select(u => u.IsSsoAdmin
+                    || db.ClientAssignments.Any(a => a.UserId == u.Id && a.ClientId == client.Id))
+                .FirstOrDefaultAsync(ct);
+            if (!granted)
+            {
+                await audit.WriteAsync(AuditEvents.OidcAuthorizeDenied, userId, client.Id,
+                    metadata: new { reason = "assignment_required" }, ct: ct);
+                return Err("access_denied", "your account has not been granted this application");
+            }
+        }
+
         var code = Base64Url(RandomNumberGenerator.GetBytes(32));
         await codes.StoreAsync(code, new AuthorizationCodePayload(
             userId.Value, client.Id, uri, string.Join(' ', scopes), req.Nonce, req.CodeChallenge),

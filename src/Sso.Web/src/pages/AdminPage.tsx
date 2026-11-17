@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { Copy, Loader2, Plus, Search, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
-import { api, unwrap } from "../lib/api";
+import { api, getUserApps, setUserApps, unwrap } from "../lib/api";
 import type { ClientDto, InviteResult, UserDto } from "../lib/types";
 import { Alert } from "../components/ui/alert";
 import { Badge } from "../components/ui/badge";
@@ -95,6 +95,9 @@ interface ClientForm {
   redirect_uris: string[];
   scopes: string[];
   skip_consent: boolean;
+  description: string;
+  launch_url: string;
+  require_assignment: boolean;
 }
 
 const emptyClient: ClientForm = {
@@ -104,6 +107,9 @@ const emptyClient: ClientForm = {
   redirect_uris: [],
   scopes: ["openid", "profile", "email"],
   skip_consent: true,
+  description: "",
+  launch_url: "",
+  require_assignment: false,
 };
 
 function validateUri(v: string): string | null {
@@ -153,6 +159,9 @@ function ClientsTab() {
           redirect_uris: form.redirect_uris,
           allowed_scopes: form.scopes,
           skip_consent: form.skip_consent,
+          description: form.description || undefined,
+          launch_url: form.launch_url || undefined,
+          require_assignment: form.require_assignment,
         }),
       );
       setCreateOpen(false);
@@ -227,9 +236,15 @@ function ClientsTab() {
                 validate={validateUri}
               />
               <ScopePicker values={form.scopes} onChange={(v) => setForm({ ...form, scopes: v })} />
+              <Field label="Description" placeholder="Shown on the app launcher card" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
+              <Field label="Launch URL" placeholder="https://app.example.com — makes it a launchable app" value={form.launch_url} onChange={(e) => setForm({ ...form, launch_url: e.target.value })} />
               <label className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Checkbox checked={form.skip_consent} onCheckedChange={(v) => setForm({ ...form, skip_consent: v === true })} />
                 skip_consent — first-party, no consent screen
+              </label>
+              <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Checkbox checked={form.require_assignment} onCheckedChange={(v) => setForm({ ...form, require_assignment: v === true })} />
+                require_assignment — only assigned users may sign in
               </label>
               <DialogFooter>
                 <Button type="submit" disabled={busy}>{busy && <Loader2 className="animate-spin" />} Create</Button>
@@ -293,6 +308,9 @@ function ClientRow({ c, onPatch, onRotate }: { c: ClientDto; onPatch: (id: strin
   const [uris, setUris] = useState<string[]>(c.redirect_uris);
   const [scopes, setScopes] = useState<string[]>(c.allowed_scopes);
   const [skipConsent, setSkipConsent] = useState(c.skip_consent);
+  const [description, setDescription] = useState(c.description ?? "");
+  const [launchUrl, setLaunchUrl] = useState(c.launch_url ?? "");
+  const [requireAssignment, setRequireAssignment] = useState(c.require_assignment);
 
   return (
     <>
@@ -325,6 +343,9 @@ function ClientRow({ c, onPatch, onRotate }: { c: ClientDto; onPatch: (id: strin
                   redirect_uris: uris,
                   allowed_scopes: scopes,
                   skip_consent: skipConsent,
+                  description,
+                  launch_url: launchUrl,
+                  require_assignment: requireAssignment,
                 });
                 setOpen(false);
               }}
@@ -334,8 +355,13 @@ function ClientRow({ c, onPatch, onRotate }: { c: ClientDto; onPatch: (id: strin
               <div className="sm:col-span-2">
                 <TagInput label="Redirect URIs" mono values={uris} onChange={setUris} validate={validateUri} />
               </div>
+              <Field label="Launch URL" placeholder="https://app.example.com — blank hides it from the launcher" value={launchUrl} onChange={(e) => setLaunchUrl(e.target.value)} />
+              <Field label="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
               <label className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Checkbox checked={skipConsent} onCheckedChange={(v) => setSkipConsent(v === true)} /> skip_consent
+              </label>
+              <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Checkbox checked={requireAssignment} onCheckedChange={(v) => setRequireAssignment(v === true)} /> require_assignment
               </label>
               <div className="flex justify-end gap-2 sm:col-span-2">
                 <Button type="button" variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
@@ -520,15 +546,18 @@ function UsersTab() {
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">{fmt(u.created_at)}</TableCell>
                   <TableCell className="text-right">
-                    {u.status === "disabled" ? (
-                      <Button variant="outline" size="sm" disabled={busy !== null} onClick={() => void act(u, "enable")}>
-                        {busy === u.id ? <Loader2 className="animate-spin" /> : "Enable"}
-                      </Button>
-                    ) : (
-                      <Button variant="ghost" size="sm" disabled={busy !== null} onClick={() => void act(u, "disable")}>
-                        {busy === u.id ? <Loader2 className="animate-spin" /> : "Disable"}
-                      </Button>
-                    )}
+                    <div className="flex justify-end gap-1">
+                      <UserAppsDialog user={u} />
+                      {u.status === "disabled" ? (
+                        <Button variant="outline" size="sm" disabled={busy !== null} onClick={() => void act(u, "enable")}>
+                          {busy === u.id ? <Loader2 className="animate-spin" /> : "Enable"}
+                        </Button>
+                      ) : (
+                        <Button variant="ghost" size="sm" disabled={busy !== null} onClick={() => void act(u, "disable")}>
+                          {busy === u.id ? <Loader2 className="animate-spin" /> : "Disable"}
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -537,5 +566,105 @@ function UsersTab() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/** Per-user app access editor (KD-14): check the clients this user may launch. */
+function UserAppsDialog({ user }: { user: UserDto }) {
+  const [open, setOpen] = useState(false);
+  const [clients, setClients] = useState<ClientDto[] | null>(null);
+  const [selected, setSelected] = useState<Set<string> | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setClients(null);
+    setSelected(null);
+    setError(null);
+    Promise.all([
+      unwrap(api.get("/v1/admin/clients")).then((d) => (d as { clients: ClientDto[] }).clients),
+      getUserApps(user.id),
+    ])
+      .then(([cs, ids]) => {
+        setClients(cs);
+        setSelected(new Set(ids));
+      })
+      .catch((err) => setError(err instanceof Error ? err.message : "Could not load app access."));
+  }, [open, user.id]);
+
+  function toggle(clientId: string, on: boolean) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(clientId);
+      else next.delete(clientId);
+      return next;
+    });
+  }
+
+  async function save() {
+    if (!selected) return;
+    setBusy(true);
+    try {
+      await setUserApps(user.id, [...selected]);
+      toast.success(`App access updated for ${user.email}.`);
+      setOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Save failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="sm">Apps</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>App access — {user.display_name || user.email}</DialogTitle>
+          <DialogDescription>
+            Apps the user sees on /dashboard. Also gates sign-in for clients with require_assignment.
+          </DialogDescription>
+        </DialogHeader>
+        {error && <Alert variant="destructive">{error}</Alert>}
+        {clients === null || selected === null ? (
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-full" />
+            <Skeleton className="h-9 w-full" />
+          </div>
+        ) : clients.length === 0 ? (
+          <p className="py-4 text-center text-sm text-muted-foreground">No clients registered yet.</p>
+        ) : (
+          <ul className="max-h-72 space-y-1 overflow-y-auto">
+            {clients.map((c) => (
+              <li key={c.id}>
+                <label className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 hover:bg-accent/50">
+                  <Checkbox
+                    checked={selected.has(c.client_id)}
+                    onCheckedChange={(v) => toggle(c.client_id, v === true)}
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-sm font-medium">{c.name}</span>
+                    <span className="block truncate font-mono text-xs text-muted-foreground">{c.client_id}</span>
+                  </span>
+                  {!c.active && <Badge variant="secondary">disabled</Badge>}
+                  {c.require_assignment && <Badge variant="venus">required</Badge>}
+                </label>
+              </li>
+            ))}
+          </ul>
+        )}
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline">Cancel</Button>
+          </DialogClose>
+          <Button onClick={() => void save()} disabled={busy || selected === null}>
+            {busy && <Loader2 className="animate-spin" />} Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

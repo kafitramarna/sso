@@ -50,6 +50,9 @@ public sealed class ClientsService(ISsoDbContext db, IAuditWriter audit, IClock 
             RedirectUris = [.. req.RedirectUris],
             AllowedScopes = [.. req.AllowedScopes ?? DefaultScopes],
             SkipConsent = req.SkipConsent ?? true,
+            Description = Clean(req.Description),
+            LaunchUrl = CleanUrl(req.LaunchUrl),
+            RequireAssignment = req.RequireAssignment ?? false,
             Active = true,
             CreatedAt = clock.UtcNow,
         };
@@ -77,6 +80,9 @@ public sealed class ClientsService(ISsoDbContext db, IAuditWriter audit, IClock 
         if (req.AllowedScopes is not null) client.AllowedScopes = [.. req.AllowedScopes];
         if (req.SkipConsent is { } skip) client.SkipConsent = skip;
         if (req.Active is { } active) client.Active = active;
+        if (req.Description is { } description) client.Description = Clean(description);
+        if (req.LaunchUrl is { } launchUrl) client.LaunchUrl = CleanUrl(launchUrl);
+        if (req.RequireAssignment is { } required) client.RequireAssignment = required;
 
         await db.SaveChangesAsync(ct);
         await audit.WriteAsync(AuditEvents.ClientUpdated, actorId, client.Id,
@@ -104,7 +110,21 @@ public sealed class ClientsService(ISsoDbContext db, IAuditWriter audit, IClock 
 
     private static ClientDto ToDto(Client c)
         => new(c.Id, c.ClientId, c.Name, c.Type.ToString().ToLowerInvariant(), c.Active,
-            [.. c.RedirectUris], [.. c.AllowedScopes], c.SkipConsent, c.CreatedAt);
+            [.. c.RedirectUris], [.. c.AllowedScopes], c.SkipConsent,
+            c.LaunchUrl, c.Description, c.RequireAssignment, c.CreatedAt);
+
+    private static string? Clean(string? value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private static string? CleanUrl(string? url)
+    {
+        var v = Clean(url);
+        if (v is not null
+            && (!Uri.TryCreate(v, UriKind.Absolute, out var u)
+                || (u.Scheme != Uri.UriSchemeHttps && u.Scheme != Uri.UriSchemeHttp)))
+            throw ApiError.Validation("launch_url must be an absolute http(s) URL.");
+        return v;
+    }
 
     private static ClientType ParseType(string type) => type.ToLowerInvariant() switch
     {
